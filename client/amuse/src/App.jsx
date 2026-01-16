@@ -1,34 +1,45 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import { useState, useRef, useEffect } from 'react'
+import { BrowserRouter } from 'react-router-dom';
+import Layout from './components/Layout';
 
 function App() {
-  const [count, setCount] = useState(0)
+
+  // 화면 로딩 상태
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 첫 렌더링인지 확인 (StrictMode의 두번 호출 방지)
+  const isFirstRender = useRef(true);
+
+  // 화면 첫 렌더링 시 토큰 유효한지 확인
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        await axios.get("http://localhost/api/auth/me", {
+          withCredentials: true
+        });
+
+      } catch (error) {
+        if (error.status === 401) {
+          console.log("인증되지 않은 사용자 : 로그인 페이지로 이동");
+          localStorage.clear();
+          setIsLogin(false);
+        }
+      }
+    }
+
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      checkAuth().finally(() => setIsLoading(false));
+    }
+
+  }, []);
+
+  if (isLoading) return null; // 리렌더링 시 깜빡임 방지
 
   return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.jsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
+    <BrowserRouter>
+      <Layout />
+    </BrowserRouter>
   )
 }
 
