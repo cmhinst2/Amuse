@@ -107,22 +107,17 @@ export function ProfileSetting() {
 
   // 2. 이미지 변경 핸들러
   const handleImageChange = (e) => {
-    const file = e.target.files[0]; // 선택한 파일 가져오기
+    const file = e.target.files[0];
 
     if (file) {
       // 브라우저 내 임시 URL 생성
       const reader = new FileReader();
 
-      // 파일 읽기가 완료되면 실행
       reader.onloadend = () => {
-        setProfileImg(reader.result); // Base64로 인코딩된 문자열을 상태에 저장
+        setProfileImg(reader.result);
       };
 
       reader.readAsDataURL(file);
-
-      // (참고) 만약 URL.createObjectURL을 쓴다면:
-      // const previewUrl = URL.createObjectURL(file);
-      // setProfileImg(previewUrl);
     }
   };
 

@@ -93,3 +93,22 @@ body {
 .animate-wiggle {
   animation: wiggle 0.5s ease-in-out infinite;
 }
+
+/* Webkit 브라우저 (Chrome, Safari, Edge)용 스크롤바 커스텀 */
+textarea::-webkit-scrollbar {
+  width: 7px; /* 스크롤바 너비 */
+}
+
+textarea::-webkit-scrollbar-track {
+  background: transparent; /* 트랙 배경 (투명하게 하여 배경색 유지) */
+}
+
+textarea::-webkit-scrollbar-thumb {
+  background-color: #334155; /* 스크롤바 핸들 색상 (입력창/Hover색상) */
+  border-radius: 10px; /* 둥글게 */
+}
+
+textarea::-webkit-scrollbar-thumb:hover {
+  background-color: #fb7185; /* 호버 시 메인 포인트 색상(로즈)으로 변경 */
+  cursor: pointer;
+}

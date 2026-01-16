@@ -55,4 +55,12 @@ public class Novel {
     @OneToMany(mappedBy = "novel", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default
     private List<StoryNote> storyNotes = new ArrayList<>();
+    
+    @Builder.Default
+    @Column(name = "view_count", nullable = false)
+    private Long viewCount = 0L; // 조회수 필드 추가
+
+    public void incrementViewCount() {
+        this.viewCount++;
+    }
 }
