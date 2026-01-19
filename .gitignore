@@ -8,6 +8,8 @@ settings.json
 config.properties
 script.sql
 
+images/
+
 driver.xml
 
 META-INF

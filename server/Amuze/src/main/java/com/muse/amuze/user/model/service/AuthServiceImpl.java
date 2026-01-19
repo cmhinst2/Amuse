@@ -3,6 +3,8 @@ package com.muse.amuze.user.model.service;
 import java.util.HashMap;
 import java.util.Map;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 import com.muse.amuze.common.auth.JwtTokenProvider;
@@ -69,5 +71,12 @@ public class AuthServiceImpl implements AuthService{
 		User user = userRepository.findByEmail(userEmail).orElseThrow();
 	    user.setRefreshToken(null);
 	    user.setExpiredAt(null);
+	}
+	
+	@Override
+	public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException{
+		// 이메일로 유저를 찾아서 반환 (User 엔티티가 UserDetails이므로 바로 반환 가능)
+        return userRepository.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException("해당 이메일을 가진 유저를 찾을 수 없습니다: " + email));
 	}
 }

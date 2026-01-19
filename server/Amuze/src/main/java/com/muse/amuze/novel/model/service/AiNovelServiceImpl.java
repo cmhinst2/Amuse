@@ -1,27 +1,21 @@
 package com.muse.amuze.novel.model.service;
 
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.stream.Collectors;
+import java.io.File;
 
 import org.springframework.ai.anthropic.AnthropicChatModel;
-import org.springframework.ai.chat.messages.SystemMessage;
-import org.springframework.ai.chat.messages.UserMessage;
-import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.ai.openai.OpenAiChatModel;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.ResourceLoader;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StreamUtils;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.muse.amuze.novel.model.dto.AiAnalysisResponse;
-import com.muse.amuze.novel.model.entity.Chapter;
-import com.muse.amuze.novel.model.entity.Character;
-import com.muse.amuze.novel.model.entity.Scene;
-import com.muse.amuze.novel.model.repository.ChapterRepository;
-import com.muse.amuze.novel.model.repository.CharacterRepository;
-import com.muse.amuze.novel.model.repository.SceneRepository;
+import org.springframework.web.multipart.MultipartFile;
+import com.muse.amuze.AmuzeApplication;
+import com.muse.amuze.common.util.Utility;
+import com.muse.amuze.novel.model.dto.NovelCreateRequest;
+import com.muse.amuze.novel.model.entity.Novel;
+import com.muse.amuze.novel.model.entity.NovelStats;
+import com.muse.amuze.novel.model.entity.StoryScene;
+import com.muse.amuze.novel.model.repository.NovelRepository;
+import com.muse.amuze.novel.model.repository.NovelStatsRepository;
+import com.muse.amuze.novel.model.repository.StorySceneRepository;
+import com.muse.amuze.user.model.entity.User;
 
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
@@ -32,84 +26,68 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class AiNovelServiceImpl implements AiNovelService {
 
-	private final OpenAiChatModel openAiChatModel;
-	private final AnthropicChatModel anthropicChatModel;
-	private final SceneRepository sceneRepository;
-	private final CharacterRepository characterRepository;
-	private final ChapterRepository chapterRepository;
-	private final ObjectMapper objectMapper;
-	private final ResourceLoader resourceLoader;
+	private final StorySceneRepository storySceneRepository;
+	private final NovelRepository novelRepository;
+	private final NovelStatsRepository novelStatsRepository;
+	private final AnthropicChatModel chatModel; // spring-ai-anthropic 사용
 
-	/**
-	 * 핵심 집필 로직: 유저는 chapterId와 userInput만 전달함
+	@Value("${amuse.novel.web-path}")
+	private String novelWebPath;
+	
+	@Value("${amuse.novel.folder-path}")
+	private String novelFolderPath;
+	
+	/** 새 소설 시작하기
+	 *
 	 */
-	@Override
 	@Transactional
-	public Scene writeAndAnalyzeScene(Long chapterId, String userInput) {
-		try {
-			// 1. 데이터 로드 (챕터 및 이전 맥락 추출)
-			Chapter chapter = chapterRepository.findById(chapterId)
-					.orElseThrow(() -> new RuntimeException("챕터를 찾을 수 없습니다."));
-
-			List<Scene> previousScenes = sceneRepository.findByChapterIdOrderBySequenceOrderAsc(chapterId);
-			String contextSummary = previousScenes.stream().map(Scene::getSummary).filter(s -> s != null)
-					.collect(Collectors.joining(" -> "));
-
-			if (contextSummary.isEmpty())
-				contextSummary = "소설의 시작 단계입니다.";
-
-			// 2. Claude 4.5 Opus - 소설 집필
-			String writingSystemPrompt = loadPrompt("classpath:prompts/claude-system-prompt.txt");
-			String writingUserPrompt = String.format("[이전줄거리]: %s\n[가이드]: %s", contextSummary, userInput);
-
-			String aiOutput = callClaude(writingSystemPrompt, writingUserPrompt);
-
-			// 3. GPT-4o mini - 결과 분석
-			String analysisSystemPrompt = loadPrompt("classpath:prompts/gpt-system-prompt.txt");
-			String analysisResult = callGpt(analysisSystemPrompt, "분석할 장면: " + aiOutput);
-
-			// 4. 결과 파싱 및 DB 반영
-			AiAnalysisResponse analysis = objectMapper.readValue(analysisResult, AiAnalysisResponse.class);
-			updateCharacterStatus(chapter.getNovel().getId(), analysis.getCharacter_status_changes());
-
-			// 5. 장면 저장
-			Scene scene = Scene.builder().chapter(chapter).userInput(userInput).aiOutput(aiOutput)
-					.summary(analysis.getSummary()).sentimentDelta(analysis.getSentiment_delta())
-					.sequenceOrder(previousScenes.size() + 1).build();
-
-			return sceneRepository.save(scene);
-
-		} catch (Exception e) {
-			log.error("소설 생성 중 오류 발생: ", e);
-			throw new RuntimeException("소설 생성 및 분석 중 오류가 발생했습니다.", e);
+	@Override
+	public Long createNovel(NovelCreateRequest request, MultipartFile coverImage, User user) throws Exception{
+		
+		String rename = null;
+		String updatePath = null; 
+		
+		// 커버 이미지 처리
+		if (coverImage != null && !coverImage.isEmpty()) {
+			rename = Utility.fileRename(coverImage.getOriginalFilename());
+			updatePath = novelWebPath + rename;
+			coverImage.transferTo(new File(novelFolderPath + rename));
 		}
-	}
-
-	// --- 헬퍼 메서드 ---
-
-	private String loadPrompt(String path) throws Exception {
-		Resource resource = resourceLoader.getResource(path);
-		return StreamUtils.copyToString(resource.getInputStream(), StandardCharsets.UTF_8);
-	}
-
-	private String callClaude(String system, String user) {
-		return anthropicChatModel.call(new Prompt(List.of(new SystemMessage(system), new UserMessage(user))))
-				.getResult().getOutput().getContent();
-	}
-
-	private String callGpt(String system, String user) {
-		return openAiChatModel.call(new Prompt(List.of(new SystemMessage(system), new UserMessage(user)))).getResult()
-				.getOutput().getContent();
-	}
-
-	private void updateCharacterStatus(Long novelId, List<AiAnalysisResponse.CharacterStatus> statusChanges) {
-		if (statusChanges == null)
-			return;
-
-		List<Character> characters = characterRepository.findByNovelId(novelId);
-		for (AiAnalysisResponse.CharacterStatus change : statusChanges) {
-			characters.stream().filter(c -> c.getName().equals(change.getName())).findFirst()
-					.ifPresent(c -> c.setCurrentStatus(change.getStatus()));
-		}
+		
+		// 소설 기본 뼈대 저장
+		Novel novel = Novel.builder()
+	            .author(user) // 작가정보
+	            .title(request.getTitle()) // 제목
+	            .description(request.getDescription()) // 짧은소개글
+	            .tags(request.getTags()) // 태그
+	            .coverImageUrl(updatePath) // 커버이미지
+	            .characterSettings(request.getCharacterSettings()) // 캐릭터및세계관
+	            .status("PROCESS") // 진행중인소설
+	            .isShared(false) // 비공유
+	            .build();
+		
+		// novel_tags 테이블에 데이터가 자동으로 분리되어 저장
+		Novel savedNovel = novelRepository.save(novel);
+		
+		// 소설 통계 초기 데이터 생성 (조회수, 좋아요 등)
+	    NovelStats stats = NovelStats.builder()
+	            .novel(savedNovel)
+	            .viewCount(0L)
+	            .likeCount(0L)
+	            .build();
+	    novelStatsRepository.save(stats);
+	    
+	    // 유저가 입력한 첫장면 저장
+	    StoryScene firstScene = StoryScene.builder()
+	            .novel(savedNovel)
+	            .sequenceOrder(0) // 첫 번째 데이터
+	            .userInput(request.getFirstScene()) // 사용자가 입력한 가이드/프롬프트
+	            .aiOutput(request.getFirstScene())  // 첫 장면은 사용자가 쓴 내용이 곧 본문
+	            .keyEvent("소설의 시작")
+	            .affinityAtMoment(0)
+	            .build();
+	    storySceneRepository.save(firstScene);
+	    
+		return savedNovel.getId();
 	}
 }

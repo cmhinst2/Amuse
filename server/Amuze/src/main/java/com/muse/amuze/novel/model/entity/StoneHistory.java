@@ -1,5 +1,7 @@
 package com.muse.amuze.novel.model.entity;
 
+import com.muse.amuze.user.model.entity.User;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -16,39 +18,25 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "character")
+@Table(name = "stone_history")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Character extends BaseTimeEntity {
+public class StoneHistory extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    private Integer id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "novel_id", nullable = false)
-    private Novel novel;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Column(nullable = false)
+    private Integer amount;
 
-    @Builder.Default
-    @Column(length = 20)
-    private String role = "SUB";
-
-    @Builder.Default
-    private Integer affinity = 0;
-
-    @Builder.Default
-    @Column(name = "relationship_level", length = 20)
-    private String relationshipLevel = "ACQUAINTANCE";
+    @Column(nullable = false, length = 20)
+    private String type; // CHARGE, USE, REFUND
 
     @Column(columnDefinition = "TEXT")
-    private String personality;
-
-    @Column(columnDefinition = "TEXT")
-    private String appearance;
-
-    @Column(name = "current_status", columnDefinition = "TEXT")
-    private String currentStatus;
+    private String description;
 }

@@ -16,11 +16,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "character")
+@Table(name = "story_scene")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class Character extends BaseTimeEntity {
+public class StoryScene extends BaseTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,26 +29,21 @@ public class Character extends BaseTimeEntity {
     @JoinColumn(name = "novel_id", nullable = false)
     private Novel novel;
 
-    @Column(nullable = false, length = 100)
-    private String name;
+    @Column(name = "sequence_order", nullable = false)
+    private int sequenceOrder;
 
-    @Builder.Default
-    @Column(length = 20)
-    private String role = "SUB";
+    @Column(name = "user_input", columnDefinition = "TEXT")
+    private String userInput;
 
-    @Builder.Default
-    private Integer affinity = 0;
-
-    @Builder.Default
-    @Column(name = "relationship_level", length = 20)
-    private String relationshipLevel = "ACQUAINTANCE";
+    @Column(name = "ai_output", columnDefinition = "TEXT", nullable = false)
+    private String aiOutput;
 
     @Column(columnDefinition = "TEXT")
-    private String personality;
+    private String summary;
 
-    @Column(columnDefinition = "TEXT")
-    private String appearance;
+    @Column(name = "key_event")
+    private String keyEvent;
 
-    @Column(name = "current_status", columnDefinition = "TEXT")
-    private String currentStatus;
+    @Column(name = "affinity_at_moment")
+    private Integer affinityAtMoment;
 }

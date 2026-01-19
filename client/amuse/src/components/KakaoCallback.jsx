@@ -1,8 +1,8 @@
 import { useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import axiosAPI from "../api/axiosInterceptor.js";
 import axios from "axios";
 import useAuthStore from "../store/authStore.js";
+import axiosAPI from "../api/axiosAPI.js";
 
 const KAKAO_REST_API_KEY = import.meta.env.VITE_KAKAO_REST_API_KEY;
 const REDIRECT_URI = import.meta.env.VITE_KAKAO_REDIRECT_URI;
