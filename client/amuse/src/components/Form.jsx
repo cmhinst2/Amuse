@@ -153,9 +153,8 @@ export function Sidebar() {
   ];
 
   return (
-    <aside className="w-60 bg-[#1e293b] border-r border-[#334155]/20 flex flex-col pt-10">
+    <aside className="w-60 h-full bg-[#1e293b] border-r border-[#334155]/20 flex flex-col pt-10">
       <div className="flex-1 px-4">
-
         <ul className="space-y-2">
           {menuItems.map((item) => (
             <li key={item.path}>

@@ -1,6 +1,8 @@
 package com.muse.amuze.user.model.entity;
 
-import com.muse.amuze.novel.model.entity.BaseTimeEntity;
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.LastModifiedDate;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -21,7 +23,7 @@ import lombok.Setter;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class UserStone extends BaseTimeEntity {
+public class UserStone {
     @Id
     private Integer userId;
 
@@ -33,4 +35,8 @@ public class UserStone extends BaseTimeEntity {
     @Builder.Default
     @Column(name = "total_stone", nullable = false)
     private Integer totalStone = 0;
+    
+    @LastModifiedDate
+    @Column(name = "updated_at", updatable = false)
+    private LocalDateTime updatedAt;
 }

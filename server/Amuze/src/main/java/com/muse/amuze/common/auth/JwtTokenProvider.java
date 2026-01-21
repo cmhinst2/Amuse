@@ -28,7 +28,8 @@ public class JwtTokenProvider { 	// 토큰을 발행하고 내용을 확인함.
     private SecretKey key;
 
     // 만료 시간 설정 (밀리초 단위)
-    private final long accessTokenValidity = 1000L * 60 * 60; // 1시간
+    //private final long accessTokenValidity = 1000L * 60 * 60; // 1시간
+    private final long accessTokenValidity = 1000L * 60 * 60 * 24; // 24시간
     private final long refreshTokenValidity = 1000L * 60 * 60 * 24 * 14; // 14일
 
     @PostConstruct // 객체가 생성되고 DI가 완료된 직후 딱 한 번 자동으로 실행될 메서드

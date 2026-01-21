@@ -8,7 +8,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class AiNovelResponse {
-    private String ai_output;
-    private int affinity_delta;
-    private String reason;
+    private String content; // 소설 본문
+    private String keyEvent; // 이번 조각의 핵심 사건
+    private int affinityScore; // 계산된 현재 호감도 (0~100)
+    private String summary; // 현재까지의 짧은 요약
 }

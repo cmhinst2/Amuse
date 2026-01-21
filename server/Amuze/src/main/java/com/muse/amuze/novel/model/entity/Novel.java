@@ -22,10 +22,12 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "novel")
 @Getter @Setter
+@ToString
 @NoArgsConstructor @AllArgsConstructor
 @Builder
 public class Novel extends BaseTimeEntity {

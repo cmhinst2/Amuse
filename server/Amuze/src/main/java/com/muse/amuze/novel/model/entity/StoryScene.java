@@ -20,7 +20,7 @@ import lombok.Setter;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class StoryScene extends BaseTimeEntity {
+public class StoryScene extends BaseCreateTimeEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -46,4 +46,5 @@ public class StoryScene extends BaseTimeEntity {
 
     @Column(name = "affinity_at_moment")
     private Integer affinityAtMoment;
+    
 }

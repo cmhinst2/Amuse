@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Sidebar } from "../components/Form";
-import axiosAPI from '../api/axiosAPI';
-import novelAPI from '../api/novelAPI';
 
-export default function StudioWrite() {
+import { Sidebar } from "../components/Form";
+import novelAPI from '../api/novelAPI';
+import { Plus, Shield, Trash2, UserCircle, Users } from 'lucide-react';
+
+// 세팅화면
+export default function StudioWriteSetting() {
   const navigate = useNavigate();
   const { novelId } = useParams();
   const queryClient = useQueryClient();
 
-  // 상태 관리
+  // <States>
   const [step, setStep] = useState(novelId ? 'write' : 'setup');
   const [setupStep, setSetupStep] = useState(1); // 1: 기본정보, 2: 세계관/캐릭터, 3: 시작장면
   const [coverFile, setCoverFile] = useState(null);
@@ -19,13 +21,47 @@ export default function StudioWrite() {
     title: '',
     tags: ['', '', ''],
     description: '',
-    characterSettings: 
-      "# 공략 대상 (메인 캐릭터)\n- 이름: \n- 성격: \n- 외형 및 특징:\n\n" +
-      "# 주인공 (사용자 캐릭터)\n- 이름: \n- 성격: \n- 외형 및 특징: \n\n" +
-      "# 세계관 및 기타 설정\n- 배경: \n- 특이사항: \n\n" +
-      "# 관계 등급(지인/친구/썸/연인)\n메인캐릭터와 사용자캐릭터의 현재 관계는 '친구' ",
+    worldSetting: '', // 세계관 전용 필드
+    characters: [
+      { name: '', role: 'MAIN', gender: 'M', personality: '', appearance: '' }, // 기본 메인 캐릭터
+      { name: '', role: 'USER', gender: 'F', personality: '', appearance: '' }  // 기본 사용자 캐릭터
+    ],
+    relationshipLevel: 'ACQUAINTANCE',
     firstSceneInput: ''
   });
+
+  // <Handlers>
+  // 캐릭터 추가 핸들러 (SUB 캐릭터)
+  const addSubCharacter = () => {
+    setNovelData(prev => ({
+      ...prev,
+      characters: [...prev.characters, { name: '', role: 'SUB', personality: '', appearance: '' }]
+    }));
+  };
+
+  // 캐릭터 삭제 핸들러
+  const removeCharacter = (index) => {
+    if (index < 2) return; // 메인과 유저는 삭제 불가
+    setNovelData(prev => ({
+      ...prev,
+      characters: prev.characters.filter((_, i) => i !== index)
+    }));
+  };
+
+  // 캐릭터 정보 변경 핸들러
+  const handleCharacterChange = (index, field, value) => {
+    setNovelData(prev => {
+      const newChars = [...prev.characters];
+      newChars[index][field] = value;
+      return { ...prev, characters: newChars };
+    });
+  };
+
+  // 일반 텍스트 입력용 (제목, 설명, 세계관 등)
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setNovelData(prev => ({ ...prev, [id]: value }));
+  };
 
   // 이미지 핸들러
   const handleCoverImgChange = (e) => {
@@ -38,21 +74,16 @@ export default function StudioWrite() {
     }
   };
 
-  // 일반 텍스트 입력용 (제목, 설명, 세계관 등)
-  const handleChange = (e) => {
-    const { id, value } = e.target;
-    setNovelData(prev => ({ ...prev, [id]: value }));
-  };
-
   // 태그 입력 전용 (index를 인자로 받음)
   const handleTagChange = (index, value) => {
     setNovelData(prev => {
       const newTags = [...prev.tags];
-      newTags[index] = value;         
+      newTags[index] = value;
       return { ...prev, tags: newTags };
     });
   };
 
+  // <Mutations>
   // 소설 생성 Mutation
   const createNovelMutation = useMutation({
     mutationFn: async (data) => {
@@ -66,14 +97,13 @@ export default function StudioWrite() {
         title: data.title,
         tags: filteredTags,
         description: data.description,
-        characterSettings: data.characterSettings,
+        worldSetting: data.worldSetting, // 추가된 세계관
+        characters: data.characters,     // 구조화된 리스트 전송
         firstScene: data.firstSceneInput
       });
 
       // Blob 생성 시 한글 깨짐 방지를 위해 UTF-8 명시 (선택사항이나 권장)
       formData.append("novelInfo", new Blob([novelInfo], { type: "application/json;charset=utf-8" }));
-
-      // 서버의 @RequestPart("coverImage")와 이름 맞추기
       if (coverFile) formData.append("coverImage", coverFile);
 
       const response = await novelAPI.post('/api/novel/write', formData, {
@@ -82,7 +112,6 @@ export default function StudioWrite() {
       return response.data;
     },
     onSuccess: (newId) => {
-      console.log("생성 성공:", newId);
       queryClient.invalidateQueries(['novels']);
       // 성공 시 새로 생성된 소설 ID로 이동
       navigate(`/studio/write/${newId}`, { replace: true });
@@ -167,7 +196,7 @@ export default function StudioWrite() {
                       </div>
 
                       <div className="space-y-2">
-                        <label className="text-xs font-bold text-[#FB7185] ml-1">작품 요약(Description)</label>
+                        <label className="text-xs font-bold text-[#FB7185] ml-1">작품 소개글</label>
                         <textarea id="description" value={novelData.description} onChange={handleChange} placeholder="독자에게 보여줄 짧은 소개글"
                           className="w-full h-32 bg-[#1e293b] border border-[#1e293b] rounded-xl p-4 outline-none focus:border-[#FB7185] resize-none" />
                       </div>
@@ -181,32 +210,113 @@ export default function StudioWrite() {
 
                 {/* Step 2: 캐릭터 및 세계관 설정 (DB character_settings) */}
                 {setupStep === 2 && (
-                  <div className="space-y-6 animate-fadeIn">
+                  <div className="space-y-10 animate-fadeIn">
                     <div className="space-y-2">
-                      <h2 className="text-3xl font-black">캐릭터 및 세계관 가이드</h2>
-                      <p className="text-[#94A3B8]">AI가 이야기의 일관성을 유지할 수 있도록 상세 설정을 적어주세요. 양식에 맞춰 쓰되 서브 캐릭터는 더 추가할 수 있습니다.</p>
+                      <h2 className="text-3xl font-black text-[#F1F5F9]">Character & World</h2>
+                      <p className="text-[#94A3B8]">이야기를 이끌어갈 인물들과 그들이 살아갈 세계를 정의합니다.</p>
                     </div>
-                    <textarea id="characterSettings" value={novelData.characterSettings} onChange={handleChange}
-                      placeholder="# 공략 대상 (메인 캐릭터)
-- 이름: 이안
-- 성격: 과묵하며 까칠한듯 보이지만 의외로 다정한 구석이 있는 츤데레 스타일
-- 외형 및 특징: 검정 머리카락, 하늘색 눈, 187cm의 큰 키에 운동으로 다져진 다부진 근육남. 검정 정장을 주로 입는다.
 
-# 주인공 (사용자 캐릭터)
-- 이름: 민나나
-- 성격: 밝고 당찬 성격에 모난구석 없는 사회성 좋은 테토녀 스타일.
-- 외형 및 특징: 진갈색 긴 생머리, 금안, 작고 아담한 체형에 오렌지 체향이 난다.
+                    {/* 캐릭터 리스트 섹션 */}
+                    <div className="space-y-6">
+                      {novelData.characters.map((char, index) => (
+                        <div key={index} className="relative p-6 bg-[#1e293b] rounded-3xl border border-[#334155] group hover:border-[#FB7185]/50 transition-all">
+                          <div className="flex items-center gap-3 mb-4">
+                            {char.role === 'MAIN' && <Shield className="w-5 h-5 text-[#FB7185]" />}
+                            {char.role === 'USER' && <UserCircle className="w-5 h-5 text-blue-400" />}
+                            {char.role === 'SUB' && <Users className="w-5 h-5 text-green-400" />}
+                            <span className="text-xs font-bold tracking-widest uppercase text-[#94A3B8]">
+                              {char.role === 'MAIN' ? 'Target Character' : char.role === 'USER' ? 'User Persona' : 'Sub Character'}
+                            </span>
+                            {index >= 2 && (
+                              <button onClick={() => removeCharacter(index)} className="absolute top-6 right-6 text-[#94A3B8] hover:text-red-400">
+                                <Trash2 size={18} />
+                              </button>
+                            )}
+                          </div>
 
-# 세계관 및 기타 설정
-- 배경: 2026년의 현대 시대 배경
-- 특이사항: 이안과 민나나는 서로 기억하지는 못하지만 어릴적 같은 병원에 다닌적이 있었다. 그 당시 둘은 타임캡슐을 병원 뒷마당에 묻었고, 아직 그곳에 타임캡슐이 묻혀있다.
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input
+                              placeholder="이름"
+                              value={char.name}
+                              onChange={(e) => handleCharacterChange(index, 'name', e.target.value)}
+                              className="bg-[#0f172a] border border-[#334155] rounded-xl p-3 outline-none focus:border-[#FB7185]"
+                            />
+                            <select value={char.gender} onChange={(e) => handleCharacterChange(index, 'gender', e.target.value)}
+                              className="w-full bg-[#0f172a] border border-[#334155] text-[#F1F5F9] rounded-xl p-3 outline-none 
+                              appearance-none cursor-pointer transition-all
+                              focus:border-[#FB7185] focus:ring-1 focus:ring-[#FB7185]
+                              hover:bg-[#1e293b]">
+                              <option value='M'>남성</option>
+                              <option value='F'>여성</option>
+                            </select>
+                            <textarea
+                              placeholder="외형 및 특징"
+                              value={char.appearance}
+                              onChange={(e) => handleCharacterChange(index, 'appearance', e.target.value)}
+                              className="md:col-span-2 bg-[#0f172a] border border-[#334155] rounded-xl p-3 h-24 resize-none outline-none focus:border-[#FB7185]"
+                            />
+                            <textarea
+                              placeholder="성격 및 배경 설정"
+                              value={char.personality}
+                              onChange={(e) => handleCharacterChange(index, 'personality', e.target.value)}
+                              className="md:col-span-2 bg-[#0f172a] border border-[#334155] rounded-xl p-3 h-24 resize-none outline-none focus:border-[#FB7185]"
+                            />
+                          </div>
+                        </div>
+                      ))}
 
-# 관계 등급(지인/친구/썸/연인)
-메인캐릭터와 사용자캐릭터의 현재 관계는 '친구' 
-"
-                      className="w-full h-[550px] bg-[#1e293b] resize-none border border-[#334155] rounded-3xl p-8 text-[#F1F5F9] outline-none focus:border-[#FB7185] transition-all scrollbar-thin" />
-                    <button onClick={() => setSetupStep(3)} className="w-full py-4 bg-[#F1F5F9] text-[#0f172a] font-black rounded-2xl hover:bg-[#FB7185] hover:text-white">
-                      마지막: 첫 장면 작성하기
+                      <button
+                        onClick={addSubCharacter}
+                        className="w-full py-4 border-2 border-dashed border-[#334155] rounded-2xl text-[#94A3B8] hover:border-[#FB7185] hover:text-[#FB7185] transition-all flex items-center justify-center gap-2"
+                      >
+                        <Plus size={20} /> 서브 캐릭터 추가하기
+                      </button>
+                    </div>
+
+                    <div className="space-y-4 pt-6 border-t border-[#1e293b]">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-lg font-bold text-[#F1F5F9]">초기 관계 설정</h3>
+                        <span className="text-xs text-[#94A3B8]">소설 시작 시점의 관계입니다.</span>
+                      </div>
+
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        {[
+                          { id: 'ACQUAINTANCE', label: '지인', desc: '예의와 거리감' },
+                          { id: 'FRIEND', label: '친구', desc: '편안함과 장난' },
+                          { id: 'SOME', label: '썸', desc: '설렘과 긴장' },
+                          { id: 'LOVER', label: '연인', desc: '신뢰와 애정' }
+                        ].map((rel) => (
+                          <button
+                            key={rel.id}
+                            onClick={() => setNovelData(prev => ({ ...prev, relationshipLevel: rel.id }))}
+                            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${novelData.relationshipLevel === rel.id
+                              ? 'border-[#FB7185] bg-[#FB7185]/10 shadow-[0_0_15px_rgba(251,113,133,0.3)]'
+                              : 'border-[#1e293b] bg-[#1e293b] hover:border-[#334155]'
+                              }`}
+                          >
+                            <span className={`font-bold ${novelData.relationshipLevel === rel.id ? 'text-[#FB7185]' : 'text-[#F1F5F9]'}`}>
+                              {rel.label}
+                            </span>
+                            <span className="text-[10px] text-[#94A3B8] mt-1">{rel.desc}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 세계관 설정 섹션 */}
+                    <div className="space-y-4 pt-6 border-t border-[#1e293b]">
+                      <h3 className="text-lg font-bold text-[#F1F5F9]">세계관 및 기타 설정</h3>
+                      <textarea
+                        id="worldSetting"
+                        value={novelData.worldSetting}
+                        onChange={handleChange}
+                        placeholder="이야기의 배경이 되는 시대, 장소, 특이 규칙 등을 입력하세요."
+                        className="w-full h-40 bg-[#1e293b] border border-[#334155] rounded-2xl p-6 outline-none focus:border-[#FB7185] resize-none"
+                      />
+                    </div>
+
+                    <button onClick={() => setSetupStep(3)} className="w-full py-4 bg-[#F1F5F9] text-[#0f172a] font-black rounded-2xl hover:bg-[#FB7185] hover:text-white transition-all">
+                      다음 단계: 첫 장면 작성하기
                     </button>
                   </div>
                 )}
@@ -234,30 +344,18 @@ export default function StudioWrite() {
               </div>
             )}
 
-            {/* --- 실제 집필 화면 (StudioWriteAI) --- */}
+            {/* --- 실제 집필 화면 (StudioWriteAI) --- 
             {step === 'write' && (
               <div className="animate-fadeIn">
                 <div className="p-10 bg-[#1e293b] rounded-3xl border border-[#334155]">
                   <p className="text-center text-[#94A3B8]">이곳에서 AI와의 본격적인 집필이 시작됩니다.</p>
                 </div>
               </div>
-            )}
+            )}*/}
 
           </div>
         </div>
       </main>
-    </div>
-  );
-}
-
-// 집필화면
-export function StudioWriteAI() {
-  return (
-    <div className="flex flex-col items-center justify-center h-full space-y-4">
-      <div className="p-10 bg-[#1e293b] rounded-3xl border border-[#334155] text-center">
-        <h3 className="text-xl font-bold text-[#FB7185] mb-2">집필관 입장 완료</h3>
-        <p className="text-[#94A3B8]">이곳에서 AI와의 본격적인 집필이 시작됩니다.</p>
-      </div>
     </div>
   );
 }

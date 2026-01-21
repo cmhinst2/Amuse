@@ -6,12 +6,13 @@ import Header, { Footer } from "./Form";
 import useAuthStore from "../store/authStore";
 import Home from "../pages/Home";
 import Studio from "../pages/Studio";
-import StudioWrite, { StudioWriteAI } from "../pages/StudioWritePage";
 import Ticket from "../pages/Ticket";
 import Favorites from "../pages/Favorites";
 import Setting from "../pages/Setting";
 import Notice from "../pages/Notice";
 import Event from "../pages/Event";
+import StudioWriteSetting from "../pages/StudioWriteSetting";
+import { StudioWriteContent } from "../pages/StudioWriteContent";
 
 
 export default function Layout() {
@@ -38,8 +39,8 @@ export default function Layout() {
                   <Routes>
                     <Route path="/" element={<Home />} />
                     <Route path="/studio" element={<Studio />} />
-                    <Route path="/studio/write" element={<StudioWrite />} />
-                    <Route path="/studio/write/:novelId" element={<StudioWriteAI />} />
+                    <Route path="/studio/write" element={<StudioWriteSetting />} />
+                    <Route path="/studio/write/:novelId" element={<StudioWriteContent />} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />

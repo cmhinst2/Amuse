@@ -1,7 +1,5 @@
 package com.muse.amuze.novel.model.entity;
 
-import com.muse.amuze.user.model.entity.User;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -15,29 +13,26 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
 @Entity
-@Table(name = "stone_history")
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Table(name = "affinity_history")
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class StoneHistory extends BaseCreateTimeEntity {
+public class AffinityHistory extends BaseCreateTimeEntity { // 생성일만 상속
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer id;
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "character_id", nullable = false)
+    private Character character;
 
     @Column(nullable = false)
-    private Integer amount;
-
-    @Column(nullable = false, length = 20)
-    private String type; // CHARGE, USE, REFUND
+    private Integer delta;
 
     @Column(columnDefinition = "TEXT")
-    private String description;
-    
+    private String reason;
 }

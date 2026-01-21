@@ -1,5 +1,9 @@
 package com.muse.amuze.novel.model.entity;
 
+import java.time.LocalDateTime;
+
+import org.springframework.data.annotation.LastModifiedDate;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -19,7 +23,7 @@ import lombok.Setter;
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
-public class NovelStats extends BaseTimeEntity {
+public class NovelStats {
     @Id
     private Long novelId;
 
@@ -35,4 +39,8 @@ public class NovelStats extends BaseTimeEntity {
     @Builder.Default
     @Column(name = "like_count")
     private Long likeCount = 0L;
+    
+    @LastModifiedDate
+    @Column(name = "updated_at", updatable = false)
+    private LocalDateTime updatedAt;
 }
