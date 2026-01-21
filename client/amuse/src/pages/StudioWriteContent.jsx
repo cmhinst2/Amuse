@@ -8,6 +8,7 @@ import { Heart, Loader2, Menu, PenLine, Sparkles, Type } from "lucide-react";
 import { LoadingScreen } from "../components/Spinner";
 import { FormatContent } from "../components/Common";
 import { getJosa } from "../api/converter";
+import { useTypingEffect } from "../api/useTypingEffect";
 
 // 집필화면
 export function StudioWriteContent() {
@@ -25,6 +26,7 @@ export function StudioWriteContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 모바일에서 Sidebar 토글용
   const [isAutoMode, setIsAutoMode] = useState(false); // 자동 전개 모드 상태
   const [levelUpData, setLevelUpData] = useState({ isOpen: false, newLevel: '' }); // 레벨업모달 상태값
+  const [newlyCreatedSceneId, setNewlyCreatedSceneId] = useState(null); // 새로 생성된 장면 ID 상태값
 
   // <Data fetch>
   // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등 (TanStack Query)
@@ -67,6 +69,7 @@ export function StudioWriteContent() {
     mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
     onSuccess: (newScene) => {
       console.log(newScene);
+      setNewlyCreatedSceneId(newScene.sceneId); // 방금 생성된 새로운 장면 ID 저장
       // 캐시 업데이트
       queryClient.setQueryData(['novel', 'scenes', novelId], (old) => [...(old || []), newScene]);
       queryClient.setQueryData(['novel', novelId], (oldNovel) => {
@@ -187,8 +190,16 @@ export function StudioWriteContent() {
 
         <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar">
           <div className="max-w-3xl mx-auto px-6 py-12 space-y-16">
-            {scenes.map((scene) => <SceneArticle key={scene.id} content={scene.content} />)}
-            <div className="h-60" />
+            {scenes.map((scene, index) => {
+              console.log(scene);
+              return (
+                <div key={scene.novelId + index}>
+                  <SceneArticle scene={scene} shouldType={scenes.length - 1 === index && scene.sceneId === newlyCreatedSceneId} mainScrollRef={mainScrollRef} />
+                </div>
+              )
+            }
+            )}
+            <div className="h-40" />
             <div ref={bottomRef} className="h-1" />
           </div>
         </main>
@@ -237,13 +248,34 @@ export function StudioWriteContent() {
 }
 
 // 장면 렌더링 컴포넌트
-const SceneArticle = ({ content }) => (
-  <article className="animate-fadeIn">
-    <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
-      <FormatContent text={content} />
-    </p>
-  </article>
-);
+const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
+  // shouldType이 true일 때만 타이핑 훅을 실행하고, 아니면 원본 그대로 노출
+  const typingText = useTypingEffect(shouldType ? scene.content : "", 25);
+  // 타이핑 효과를 쓸 상황이면 typingText를, 아니면 원래 content를 사용
+  const content = shouldType ? typingText : scene.content;
+  const isTyping = shouldType && typingText.length < scene.content.length;
+
+  useEffect(() => {
+    if (isTyping && mainScrollRef.current) {
+      const scrollContainer = mainScrollRef.current;
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: 'auto'
+      });
+    }
+  }, [typingText, isTyping, mainScrollRef]);
+
+  return (
+    <article key={scene.id} className="animate-fadeIn">
+      <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
+        <FormatContent text={content} />
+      </p>
+      {isTyping && (
+        <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
+      )}
+    </article>
+  );
+}
 
 // 조건부 툴바 컴포넌트
 const EditorToolbar = ({ isPending, isAutoMode, setIsAutoMode, onAddParentheses }) => {

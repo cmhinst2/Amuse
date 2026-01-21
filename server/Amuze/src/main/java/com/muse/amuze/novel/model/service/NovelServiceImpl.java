@@ -48,9 +48,9 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @PropertySource("classpath:/config.properties")
 public class NovelServiceImpl implements NovelService {
-	
+
 	private final SummaryService summaryService;
-	
+
 	private final StorySceneRepository storySceneRepository;
 	private final CharacterRepository characterRepository;
 	private final NovelRepository novelRepository;
@@ -67,8 +67,6 @@ public class NovelServiceImpl implements NovelService {
 	@Value("classpath:prompts/claude-system-prompt.txt")
 	private Resource aiSystemPromptResource;
 
-
-
 	/**
 	 * noveId에 맞는 소설 조회 서비스
 	 *
@@ -78,7 +76,7 @@ public class NovelServiceImpl implements NovelService {
 		return novelRepository.findById(novelId)
 				.orElseThrow(() -> new EntityNotFoundException("소설을 찾을 수 없습니다. ID: " + novelId));
 	}
-	
+
 	/**
 	 * 소설 생성 서비스
 	 *
@@ -148,10 +146,9 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Override
 	public StoryScene findLastSceneByNovelId(Long novelId) {
-		 return storySceneRepository.findFirstByNovelIdOrderBySequenceOrderDesc(novelId)
-			        .orElseThrow(() -> new IllegalStateException("해당 소설의 첫 장면이 존재하지 않습니다."));
+		return storySceneRepository.findFirstByNovelIdOrderBySequenceOrderDesc(novelId)
+				.orElseThrow(() -> new IllegalStateException("해당 소설의 첫 장면이 존재하지 않습니다."));
 	}
-	
 
 	/**
 	 * 다음장면 생성 (AI) 서비스
@@ -162,11 +159,12 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Transactional
 	@Override
-	public StorySceneResponse generateNextScene(UserNovelRequest novelRequest) throws Exception{
+	public StorySceneResponse generateNextScene(UserNovelRequest novelRequest) throws Exception {
 		// 소설 및 캐릭터 정보 조회
 		Novel novel = findNovelById(novelRequest.getNovelId());
 
-		// 메인 캐릭터 정보 가져오기 (호감도 반영을 위해)
+		// 메인 캐릭터 정보 가져오기 (호감도 반영/성별 확인을 위해)
+		Character userChar = characterRepository.findByNovelIdAndRole(novel.getId(), CharacterRole.USER);
 		Character mainChar = characterRepository.findByNovelIdAndRole(novel.getId(), CharacterRole.MAIN);
 
 		// 이전 맥락 가져오기 (최근 3개 장면)
@@ -176,46 +174,50 @@ public class NovelServiceImpl implements NovelService {
 		try {
 			// AI 에게 전달할 메세지 List
 			List<Message> messages = new ArrayList<>();
-			
+
 			// 파일에서 시스템 프롬프트 읽기
 			String baseSystemPrompt = StreamUtils.copyToString(aiSystemPromptResource.getInputStream(),
 					StandardCharsets.UTF_8);
 
 			StringBuilder fullSystemPrompt = new StringBuilder(baseSystemPrompt);
 			fullSystemPrompt.append("\n\n[현재까지의 줄거리 요약]");
-	        if (novel.getTotalSummary() != null && !novel.getTotalSummary().isBlank()) {
-	            // 요약본이 있는 경우 (5장 이후)
-	            fullSystemPrompt.append("\n").append(novel.getTotalSummary());
-	        } else {
-	            // [초반 예외 처리] 요약본이 없는 경우 (1~4장 사이)
-	            // 소설의 기본 설명을 활용하거나, 초기 상태임을 명시
-	            String initialContext = (novel.getDescription() != null && !novel.getDescription().isBlank()) 
-	                    ? novel.getDescription() 
-	                    : "이제 막 이야기가 시작되는 단계입니다. 등장인물의 설정에 집중하여 서사를 시작하세요.";
-	            fullSystemPrompt.append("\n(초기 서사 단계): ").append(initialContext);
-	        }
-	        fullSystemPrompt.append("\n\n[등장인물 설정 및 페르소나]\n").append(novel.getCharacterSettings());
-			  
-	        fullSystemPrompt.append("\n\n### [현재 관계 상태]");
-	        fullSystemPrompt.append("\n- 관계 등급: ").append(mainChar.getRelationshipLevel());
-	        fullSystemPrompt.append("\n- 현재 호감도 점수: ").append(mainChar.getAffinity()).append("점");
-	        
-			messages.add(new SystemMessage(fullSystemPrompt.toString()));
+			if (novel.getTotalSummary() != null && !novel.getTotalSummary().isBlank()) {
+				// 요약본이 있는 경우 (5장 이후)
+				fullSystemPrompt.append("\n").append(novel.getTotalSummary());
+			} else {
+				// [초반 예외 처리] 요약본이 없는 경우 (1~4장 사이)
+				// 소설의 기본 설명을 활용하거나, 초기 상태임을 명시
+				String initialContext = (novel.getDescription() != null && !novel.getDescription().isBlank())
+						? novel.getDescription()
+						: "이제 막 이야기가 시작되는 단계입니다. 등장인물의 설정에 집중하여 서사를 시작하세요.";
+				fullSystemPrompt.append("\n(초기 서사 단계): ").append(initialContext);
+			}
+			fullSystemPrompt.append("\n\n[등장인물 설정 및 페르소나]\n").append(novel.getCharacterSettings());
+
+			fullSystemPrompt.append("\n\n[현재 세션 캐릭터 성별 정보]");
+			fullSystemPrompt.append("\n- ").append(userChar.getName()).append(": ").append("M".equals(userChar.getGender()) ? "남성" : "여성");
+			fullSystemPrompt.append("\n- ").append(mainChar.getName()).append(": ").append("M".equals(mainChar.getGender()) ? "남성" : "여성");
 			
+			fullSystemPrompt.append("\n\n### [현재 관계 상태]");
+			fullSystemPrompt.append("\n- 관계 등급: ").append(mainChar.getRelationshipLevel());
+			fullSystemPrompt.append("\n- 현재 호감도 점수: ").append(mainChar.getAffinity()).append("점");
+
+			messages.add(new SystemMessage(fullSystemPrompt.toString()));
+
 			// 이전 맥락(최근3개) 메시지 객체로 추가
 			for (StoryScene scene : previousScenes) {
-			    messages.add(new UserMessage(scene.getUserInput()));
-			    messages.add(new AssistantMessage(scene.getAiOutput()));
+				messages.add(new UserMessage(scene.getUserInput()));
+				messages.add(new AssistantMessage(scene.getAiOutput()));
 			}
 
 			// 현재 유저 입력 추가
 			messages.add(new UserMessage(novelRequest.getContent()));
-			
+
 			// AI 호출
 			String jsonResponse = getAiResponse(messages);
 
 			log.debug("AI Raw Response: {}", jsonResponse);
-			
+
 			// AI 응답 파싱
 			JsonNode rootNode = objectMapper.readTree(jsonResponse);
 			String aiOutput = rootNode.get("ai_output").asText();
@@ -229,55 +231,41 @@ public class NovelServiceImpl implements NovelService {
 			String newLevel = mainChar.getRelationshipLevel();
 
 			// 위에서 뒤집힌 List의 마지막 SequenceOrder 꺼내오기
-			int lastOrder = previousScenes.isEmpty() ? 0 
-				    : previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
+			int lastOrder = previousScenes.isEmpty() ? 0
+					: previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
 			// 새로운 장면(Scene) 저장
-			StoryScene newScene = StoryScene.builder()
-					.novel(novel)
-					.userInput(novelRequest.getContent())
-					.aiOutput(aiOutput)
-					.keyEvent(keyEvent)
-					.sequenceOrder(lastOrder + 1)
-					.affinityAtMoment(mainChar.getAffinity())
-					.build();
+			StoryScene newScene = StoryScene.builder().novel(novel).userInput(novelRequest.getContent())
+					.aiOutput(aiOutput).keyEvent(keyEvent).sequenceOrder(lastOrder + 1)
+					.affinityAtMoment(mainChar.getAffinity()).build();
 
 			storySceneRepository.save(newScene);
-			
+
 			// 5장면마다 줄거리 요약
 			if (newScene.getSequenceOrder() % 5 == 0) {
-	            // @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
-	            summaryService.updateTotalSummaryAsync(novel.getId());
-	        }
+				// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
+				summaryService.updateTotalSummaryAsync(novel.getId());
+			}
 
 			// 응답 DTO 반환
-			return StorySceneResponse.builder()
-					.novelId(novel.getId())
-					.content(aiOutput)
-					.affinity(mainChar.getAffinity())
-					.affinityDelta(affinityDelta)
-					.reason(reason)
-					.relationshipLevel(newLevel)
-					.sceneId(newScene.getId())
-					.levelUp(!oldLevel.equals(newLevel))
-					.build();
+			return StorySceneResponse.builder().novelId(novel.getId()).content(aiOutput)
+					.affinity(mainChar.getAffinity()).affinityDelta(affinityDelta).reason(reason)
+					.relationshipLevel(newLevel).sceneId(newScene.getId()).levelUp(!oldLevel.equals(newLevel)).build();
 
 		} catch (IOException e) {
 			log.error("프롬프트 파일을 읽거나 JSON을 파싱하는 중 오류 발생", e);
 			throw new RuntimeException("AI 응답 처리 실패");
 		}
 	}
-	
-	/** 해당 소설 모든 기록 불러오기
+
+	/**
+	 * 해당 소설 모든 기록 불러오기
 	 *
 	 */
 	@Override
 	public List<StorySceneResponse> getScenes(Long novelId) {
-		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId)
-	            .stream()
-	            .map(StorySceneResponse::from)
-	            .toList();
+		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
 	}
-	
+
 	// User의 메시지 전달 및 AI 답변 반환받기
 	private String getAiResponse(List<Message> messages) {
 
@@ -289,23 +277,24 @@ public class NovelServiceImpl implements NovelService {
 				.getOutput() // 결과 내부에 포함된 AI 메시지(AssistantMessage) 객체를 꺼냄
 				.getText()); // 메시지 객체 안의 '순수 텍스트(String)'만 추출
 	}
-	
+
 	// json 포맷 제거하여 파싱
 	private String extractJson(String text) {
-        if (text == null) return "{}";
-        
-        // 1. 마크다운 코드 블록 제거 (```json 또는 ```)
-        String cleaned = text.replaceAll("(?s)```(?:json)?|```", "").trim();
-        
-        // 2. 만약 앞뒤에 불필요한 설명글이 붙어있다면 { 로 시작해서 } 로 끝나는 부분만 추출
-        int firstBrace = cleaned.indexOf("{");
-        int lastBrace = cleaned.lastIndexOf("}");
-        
-        if (firstBrace != -1 && lastBrace != -1 && firstBrace < lastBrace) {
-            return cleaned.substring(firstBrace, lastBrace + 1);
-        }
-        
-        return cleaned;
-    }
-	
+		if (text == null)
+			return "{}";
+
+		// 1. 마크다운 코드 블록 제거 (```json 또는 ```)
+		String cleaned = text.replaceAll("(?s)```(?:json)?|```", "").trim();
+
+		// 2. 만약 앞뒤에 불필요한 설명글이 붙어있다면 { 로 시작해서 } 로 끝나는 부분만 추출
+		int firstBrace = cleaned.indexOf("{");
+		int lastBrace = cleaned.lastIndexOf("}");
+
+		if (firstBrace != -1 && lastBrace != -1 && firstBrace < lastBrace) {
+			return cleaned.substring(firstBrace, lastBrace + 1);
+		}
+
+		return cleaned;
+	}
+
 }

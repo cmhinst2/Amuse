@@ -56,11 +56,6 @@ public class Novel extends BaseTimeEntity {
     @Column(name = "tag") // 실제 태그 문자열이 저장될 컬럼명
     @Builder.Default
     private List<String> tags = new ArrayList<>();
-    /*
-     * 저장 시: novel.setTags(List.of("태그1", "태그2", "태그3"))를 호출하고 save하면, novel 테이블에 한 줄, novel_tags 테이블에 세 줄이 저장
-     * 조회 시: novel.getTags()를 호출하는 시점에 JPA가 자동으로 novel_tags 테이블에서 해당 소설의 태그들을 긁어옴. (Lazy Loading)
-     * 검색 시: JPQL로 SELECT n FROM Novel n JOIN n.tags t WHERE t = :tag와 같이 작성하면 특정 태그를 가진 소설만 아주 빠르게 찾아낼 수 있음.
-     * */
 
     @Column(name = "cover_image_url", columnDefinition = "TEXT")
     private String coverImageUrl;
