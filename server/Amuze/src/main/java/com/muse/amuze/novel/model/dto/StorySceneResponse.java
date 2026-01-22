@@ -17,11 +17,13 @@ import lombok.Setter;
 @AllArgsConstructor
 public class StorySceneResponse {
     private String content;        // AI가 생성한 소설 지문 및 대사 (ai_output)
+    private String userInput;	   // 사용자가 보낸 메세지(user_input)
     private Integer affinity;      // 현재 총 호감도 점수 (mainChar.getAffinity())
     private Integer affinityDelta; // 이번 장면에 의해 변동된 점수 (ai_delta)
     private String reason;         // 호감도 변동 이유 (AI가 설명한 심리학적 근거)
     private Long novelId;          // 소설 ID
     private Long sceneId;          // 방금 생성된 장면의 DB ID
+    private int sequenceOrder; 	   // 장면의 시퀀스 번호
     private String relationshipLevel; // 현재 관계 단계 (ACQUAINTANCE, SOME 등)
     private boolean levelUp;
 
@@ -35,11 +37,13 @@ public class StorySceneResponse {
     public static StorySceneResponse of(StoryScene scene, int delta, String reason, Character character) {
         return StorySceneResponse.builder()
                 .content(scene.getAiOutput())
+                .userInput(scene.getUserInput())
                 .affinity(character.getAffinity())
                 .affinityDelta(delta)
                 .reason(reason)
                 .novelId(scene.getNovel().getId())
                 .sceneId(scene.getId())
+                .sequenceOrder(scene.getSequenceOrder())
                 .relationshipLevel(character.getRelationshipLevel())
                 .build();
     }
@@ -51,9 +55,11 @@ public class StorySceneResponse {
     public static StorySceneResponse from(StoryScene scene) {
         return StorySceneResponse.builder()
                 .content(scene.getAiOutput())
+                .userInput(scene.getUserInput())
                 .affinity(scene.getAffinityAtMoment())
                 .novelId(scene.getNovel().getId())
                 .sceneId(scene.getId())
+                .sequenceOrder(scene.getSequenceOrder())
                 .levelUp(false) 
                 .build();
     }

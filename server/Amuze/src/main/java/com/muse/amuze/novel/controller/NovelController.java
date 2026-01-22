@@ -98,7 +98,7 @@ public class NovelController {
         return ResponseEntity.ok(response);
 	}
 	
-	/** 해당 소설 모든 기록 불러오기
+	/** 해당 소설 모든 장면 불러오기
 	 * @param novelId
 	 * @return
 	 */

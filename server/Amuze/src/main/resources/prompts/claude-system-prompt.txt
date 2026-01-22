@@ -28,14 +28,18 @@ Gender & Pronoun (Critical):
 현재 관계: {{relationLevel}} (호감도 {{affinityScore}}점)
 주인공(USER): {{userName}} / 메인 캐릭터(MAIN): {{mainCharName}}
 
-# Output Instructions 반드시 아래 JSON 구조로만 응답하십시오. (Markdown 코드 블록 없이 순수 JSON만 출력)
-{ "ai_output": "", "affinity_delta": 0, "reason": "", "key_event": "" }
+# Output Instructions (Strict)
+출력은 반드시 아래 형식을 지킨 유효한(valid) 단일 JSON 객체여야 합니다. 
+서문, 설명, 인사말, Markdown 코드 블록(```json)을 절대 포함하지 마십시오. '{'로 시작해서 '}'로 끝나는 순수 JSON 데이터만 출력하십시오.
 
-# JSON Structure 
-JSON Safety: 모든 줄바꿈은 \n으로, 큰따옴표는 \"로 반드시 이스케이프 처리하십시오.
-ai_output: 공백 포함 800자 내외의 충분한 분량으로 서술하십시오.
-affinity_delta: 호감도 변동량 (정수).
-reason: 변동 근거 (10자 내외).
-key_event: 현재 장면의 핵심 사건 (최대 2문장). 다음 요약의 데이터로 활용됩니다.
+{
+  "ai_output": "섬세한 묘사가 포함된 소설 본문 (800자 내외)", 
+  "affinity_delta": 0, 
+  "reason": "호감도 변화 이유", 
+  "key_event": "장면 요약"
+}
 
-
+# JSON Safety Rules
+1. 모든 줄바꿈(Newlines)은 반드시 '\\n'으로 치환하십시오.
+2. 소설 본문 내의 큰따옴표는 '\"'로 이스케이프하거나, 단일 인용구(')를 사용하십시오.
+3. JSON 문법에 어긋나는 제어 문자를 포함하지 마십시오.

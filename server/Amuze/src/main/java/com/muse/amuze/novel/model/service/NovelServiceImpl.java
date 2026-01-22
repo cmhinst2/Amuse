@@ -234,9 +234,14 @@ public class NovelServiceImpl implements NovelService {
 			int lastOrder = previousScenes.isEmpty() ? 0
 					: previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
 			// 새로운 장면(Scene) 저장
-			StoryScene newScene = StoryScene.builder().novel(novel).userInput(novelRequest.getContent())
-					.aiOutput(aiOutput).keyEvent(keyEvent).sequenceOrder(lastOrder + 1)
-					.affinityAtMoment(mainChar.getAffinity()).build();
+			StoryScene newScene = StoryScene.builder()
+					.novel(novel)
+					.userInput(novelRequest.getContent())
+					.aiOutput(aiOutput)
+					.keyEvent(keyEvent)
+					.sequenceOrder(lastOrder + 1)
+					.affinityAtMoment(mainChar.getAffinity())
+					.build();
 
 			storySceneRepository.save(newScene);
 
@@ -247,9 +252,16 @@ public class NovelServiceImpl implements NovelService {
 			}
 
 			// 응답 DTO 반환
-			return StorySceneResponse.builder().novelId(novel.getId()).content(aiOutput)
-					.affinity(mainChar.getAffinity()).affinityDelta(affinityDelta).reason(reason)
-					.relationshipLevel(newLevel).sceneId(newScene.getId()).levelUp(!oldLevel.equals(newLevel)).build();
+			return StorySceneResponse.builder()
+					.novelId(novel.getId())
+					.content(aiOutput)
+					.affinity(mainChar.getAffinity())
+					.affinityDelta(affinityDelta)
+					.reason(reason)
+					.relationshipLevel(newLevel)
+					.sceneId(newScene.getId())
+					.levelUp(!oldLevel.equals(newLevel))
+					.build();
 
 		} catch (IOException e) {
 			log.error("프롬프트 파일을 읽거나 JSON을 파싱하는 중 오류 발생", e);
@@ -263,7 +275,10 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Override
 	public List<StorySceneResponse> getScenes(Long novelId) {
-		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
+		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId)
+				.stream()
+				.map(StorySceneResponse::from)
+				.toList();
 	}
 
 	// User의 메시지 전달 및 AI 답변 반환받기
