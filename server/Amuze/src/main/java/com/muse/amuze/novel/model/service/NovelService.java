@@ -39,6 +39,10 @@ public interface NovelService {
 	 */
 	List<StorySceneResponse> getScenes(Long novelId);
 
+	/** 마지막 장면 찾기
+	 * @param novelId
+	 * @return
+	 */
 	StoryScene findLastSceneByNovelId(Long novelId);
 
 

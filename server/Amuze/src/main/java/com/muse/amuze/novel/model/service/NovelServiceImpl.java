@@ -193,12 +193,11 @@ public class NovelServiceImpl implements NovelService {
 						: "이제 막 이야기가 시작되는 단계입니다. 등장인물의 설정에 집중하여 서사를 시작하세요.";
 				fullSystemPrompt.append("\n(초기 서사 단계): ").append(initialContext);
 			}
+			
 			fullSystemPrompt.append("\n\n[등장인물 설정 및 페르소나]\n").append(novel.getCharacterSettings());
-
 			fullSystemPrompt.append("\n\n[현재 세션 캐릭터 성별 정보]");
 			fullSystemPrompt.append("\n- ").append(userChar.getName()).append(": ").append("M".equals(userChar.getGender()) ? "남성" : "여성");
 			fullSystemPrompt.append("\n- ").append(mainChar.getName()).append(": ").append("M".equals(mainChar.getGender()) ? "남성" : "여성");
-			
 			fullSystemPrompt.append("\n\n### [현재 관계 상태]");
 			fullSystemPrompt.append("\n- 관계 등급: ").append(mainChar.getRelationshipLevel());
 			fullSystemPrompt.append("\n- 현재 호감도 점수: ").append(mainChar.getAffinity()).append("점");

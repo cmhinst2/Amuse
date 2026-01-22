@@ -103,7 +103,6 @@ export function StudioWriteContent() {
 
   // <Mutaion(수정 요청처리)>
   const { mutate: generateScene, isPending } = useMutation({
-    //mutationFn: async (payload) => { await new Promise(res => setTimeout(res, 2000)); return console.log(payload); },
     mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
     onMutate: async (newSceneRequest) => { // 서버에 요청 보내기 직전에 수행
       //cancelQueries는 비동기로 동작 : 현재 실행 중인 데이터 fetching을 강제로 멈추는 것
@@ -337,7 +336,6 @@ const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
   // 사용자 입력값
   // 낙관적 데이터이거나, sequenceOrder가 0이 아닌 서버 데이터일 때
   const hasUserInput = (isPendingAI || scene.sequenceOrder !== 0) && scene.userInput;
-  console.log(`[Render Check] ID: ${scene.sceneId}, Order: ${scene.sequenceOrder}, HasInput: ${!!scene.userInput}, Final: ${hasUserInput}`);
 
   useEffect(() => {
     if (isTyping && mainScrollRef.current) {
