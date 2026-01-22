@@ -31,7 +31,7 @@ export function StudioWriteContent() {
   // <Data fetch>
   // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등 (TanStack Query)
   const { data: novelData, isLoading: isNovelLoading, isError } = useQuery({
-    queryKey: ['novel', novelId],
+    queryKey: ['novel', novelId], // 구독
     queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId, // novelId가 있을 때만 실행
     staleTime: 1000 * 60 * 5, // 5분간 데이터를 유지
@@ -39,7 +39,7 @@ export function StudioWriteContent() {
 
   // 이전 소설 장면 fetch
   const { data: scenes = [], isLoading: isScenesLoading } = useQuery({
-    queryKey: ['novel', 'scenes', novelId],
+    queryKey: ['novel', 'scenes', novelId], // 구독
     queryFn: () => novelAPI.get(`/api/novel/${novelId}/scenes`).then(res => res.data),
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5,
@@ -59,16 +59,15 @@ export function StudioWriteContent() {
     })
   });
 
-  // <최적화>
-  const mainCharacter = useMemo(() =>
-    novelData?.characters?.find(c => c.role === 'MAIN') || { name: '캐릭터', affinity: 0 }, [novelData]);
+  // <메모이제이션>
+  const mainCharacter = useMemo(() => novelData?.characters?.find(c => c.role === 'MAIN') || { name: '캐릭터', affinity: 0 }, [novelData]);
   const relation = useMemo(() => getRelationLevel(mainCharacter.affinity), [mainCharacter.affinity]);
 
   // <Mutaion(수정 요청처리)>
-  const { mutate, isPending } = useMutation({
+  const { mutate: generateScene, isPending } = useMutation({
     mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
     onSuccess: (newScene) => {
-      console.log(newScene);
+      console.log("새로운 장면 : ", newScene);
       setNewlyCreatedSceneId(newScene.sceneId); // 방금 생성된 새로운 장면 ID 저장
       // 캐시 업데이트
       queryClient.setQueryData(['novel', 'scenes', novelId], (old) => [...(old || []), newScene]);
@@ -110,18 +109,18 @@ export function StudioWriteContent() {
 
   // 자동 스크롤 하단 유지
   useEffect(() => {
-    if (bottomRef.current) {
+    if (!isScenesLoading && scenes.length > 0 && mainScrollRef.current) {
       const timer = setTimeout(() => {
-        // scrollIntoView는 브라우저 레이아웃이 끝난 뒤 실행되어야 정확합니다.
-        bottomRef.current.scrollIntoView({
-          behavior: 'smooth',
-          block: 'end',
-        });
-      }, 200); // 애니메이션 시간을 고려해 약간 넉넉히 잡습니다.
-
+        if (bottomRef.current) {
+          bottomRef.current.scrollIntoView({
+            behavior: scenes.length <= 1 ? 'auto' : 'smooth', // 첫 장면이면 즉시, 아니면 부드럽게
+            block: 'end',
+          });
+        }
+      }, 100);
       return () => clearTimeout(timer);
     }
-  }, [scenes, isPending]); // 데이터 변경,응답 중 상태 모두 감시
+  }, [scenes, isPending, isScenesLoading]); // isScenesLoading 추가!
 
   // <Handlers>
   // AI에게 사용자의 내용 전달 or 자동전개 요청
@@ -129,7 +128,7 @@ export function StudioWriteContent() {
     const trimmedInput = userInput.trim();
     if (!isAutoMode && !trimmedInput) return; // 자동모드가 아닌데 사용자 입력 비었을 때
 
-    mutate({
+    generateScene({
       novelId: novelData.id,
       mode: isAutoMode ? 'AUTO' : 'USER',
       content: trimmedInput,
@@ -253,6 +252,8 @@ const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
   const typingText = useTypingEffect(shouldType ? scene.content : "", 25);
   // 타이핑 효과를 쓸 상황이면 typingText를, 아니면 원래 content를 사용
   const content = shouldType ? typingText : scene.content;
+  const userInput = scene.sequenceOrder !== 0 && scene.userInput;
+  console.log("userInput : ", userInput);
   const isTyping = shouldType && typingText.length < scene.content.length;
 
   useEffect(() => {
@@ -266,14 +267,20 @@ const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
   }, [typingText, isTyping, mainScrollRef]);
 
   return (
-    <article key={scene.id} className="animate-fadeIn">
-      <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
-        <FormatContent text={content} />
-      </p>
-      {isTyping && (
-        <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
-      )}
-    </article>
+    <div key={scene.id} >
+      {userInput && <article className="bg-slate-800 rounded-xl p-3 mb-10">
+        <p className="text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">{userInput}</p>
+      </article> }
+      <article className="animate-fadeIn">
+        <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
+          <FormatContent text={content} />
+        </p>
+        {isTyping && (
+          <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
+        )}
+      </article>
+
+    </div>
   );
 }
 
@@ -314,7 +321,7 @@ const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAu
     )
   } else {
     return (
-      <div className={`items-center bg-[#1e293b] border rounded-2xl p-2 shadow-2xl flex items-end gap-2 transition-all duration-300
+      <div className={`flex items-stretch bg-[#1e293b] border rounded-2xl p-2 shadow-2xl flex items-end gap-2 transition-all duration-300
               ${isAutoMode ? 'border-[#FB7185] ring-1 ring-[#FB7185]/30' : 'border-[#334155] focus-within:border-[#FB7185]/50'}`}>
         <textarea
           ref={textareaRef}
@@ -335,7 +342,7 @@ const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAu
         />
 
         <button
-          className={`flex gap-2 p-3 rounded-xl transition-all active:scale-95 disabled:opacity-20 bg-[#FB7185] text-white'
+          className={`flex items-center gap-2 p-3 rounded-xl transition-all active:scale-95 disabled:opacity-20 bg-[#FB7185] text-white'
                   ${isPending ? 'opacity-50 cursor-not-allowed' : 'active:scale-95'}`}
           onClick={onSend}
           disabled={isPending || (!isAutoMode && !userInput.trim())}
