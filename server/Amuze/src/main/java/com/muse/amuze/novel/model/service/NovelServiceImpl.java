@@ -14,6 +14,7 @@ import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.Resource;
@@ -207,7 +208,13 @@ public class NovelServiceImpl implements NovelService {
 			// 이전 맥락(최근3개) 메시지 객체로 추가
 			for (StoryScene scene : previousScenes) {
 				messages.add(new UserMessage(scene.getUserInput()));
-				messages.add(new AssistantMessage(scene.getAiOutput()));
+				// AI가 이전 응답 맥락을 기억하도록 수정: DB에 본문만 저장되어있어 응답 포맷(JSON)을 기억못하는 이슈 발생
+				String fakeJsonResponse = String.format(
+			        "{\"ai_output\": \"%s\", \"affinity_delta\": 0, \"reason\": \"이전 대화\", \"key_event\": \"%s\"}",
+			        scene.getAiOutput().replace("\"", "\\\"").replace("\n", "\\n"),
+			        scene.getKeyEvent() != null ? scene.getKeyEvent().replace("\"", "\\\"") : "사건 요약"
+			    );
+			    messages.add(new AssistantMessage(fakeJsonResponse));
 			}
 
 			// 현재 유저 입력 추가
@@ -255,12 +262,14 @@ public class NovelServiceImpl implements NovelService {
 			return StorySceneResponse.builder()
 					.novelId(novel.getId())
 					.content(aiOutput)
+					.userInput(novelRequest.getContent())
 					.affinity(mainChar.getAffinity())
 					.affinityDelta(affinityDelta)
 					.reason(reason)
 					.relationshipLevel(newLevel)
 					.sceneId(newScene.getId())
 					.levelUp(!oldLevel.equals(newLevel))
+					.sequenceOrder(lastOrder + 1)
 					.build();
 
 		} catch (IOException e) {
@@ -283,8 +292,11 @@ public class NovelServiceImpl implements NovelService {
 
 	// User의 메시지 전달 및 AI 답변 반환받기
 	private String getAiResponse(List<Message> messages) {
+	    OpenAiChatOptions options = OpenAiChatOptions.builder()
+	            .temperature(0.8)
+	            .build();
 
-		Prompt prompt = new Prompt(messages);
+		Prompt prompt = new Prompt(messages, options);
 
 		// AI 호출 및 응답 반환
 		return extractJson(chatModel.call(prompt) // AI에게 메시지 뭉치를 보내고 응답(ChatResponse)을 받음

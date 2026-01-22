@@ -1,6 +1,6 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence } from 'framer-motion';
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import novelAPI from "../api/novelAPI";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "../components/Form";
@@ -9,6 +9,38 @@ import { LoadingScreen } from "../components/Spinner";
 import { FormatContent } from "../components/Common";
 import { getJosa } from "../api/converter";
 import { useTypingEffect } from "../api/useTypingEffect";
+
+// 관계 레벨 설정
+const RELATION_CONFIG = {
+  ACQUAINTANCE: {
+    level: 1,
+    name: "지인",
+    desc: "서로의 존재를 인지하기 시작했습니다.",
+    color: "#94A3B8",
+    threshold: 0,
+  },
+  FRIEND: {
+    level: 2,
+    name: "친구",
+    desc: "함께 있으면 편안한 사이가 되었습니다.",
+    color: "#60A5FA",
+    threshold: 100,
+  },
+  SOME: {
+    level: 3,
+    name: "썸",
+    desc: "공기 중에 묘한 긴장감이 흐르기 시작합니다.",
+    color: "#F472B6",
+    threshold: 200,
+  },
+  LOVER: {
+    level: 4,
+    name: "연인",
+    desc: "이제 서로가 없이는 안 되는 사이입니다.",
+    color: "#FB7185",
+    threshold: 300,
+  },
+};
 
 // 집필화면
 export function StudioWriteContent() {
@@ -44,16 +76,22 @@ export function StudioWriteContent() {
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5,
     select: (data) => data.map(s => {
-      // 역슬래시 이스케이프 제거
-      let cleanedContent = s.content.replace(/\\"/g, '"');
+      if (s.isOptimistic) { // 낙관적 데이터는 바로 반환
+        return s;
+      }
 
-      // 대사(큰따옴표) 앞뒤로 개행 추가
-      // 정규표현식 설명: ("[^"]*") -> 큰따옴표로 시작해서 큰따옴표로 끝나는 덩어리 찾기
-      // $1은 찾은 대사 본문을 의미하며, 앞뒤에 \n을 붙임
-      cleanedContent = cleanedContent
-        .replace(/("[^"]*")/g, '\n\n$1\n\n') // 대사 앞뒤 개행 삽입
-        .replace(/\n\s*\n/g, '\n\n')    // 연속된 개행 정리 (너무 많이 벌어지는 것 방지)
-        .trim();                         // 앞뒤 불필요한 공백 제거
+      // 서버 데이터(AI의 응답값) 가공
+      // 역슬래시 이스케이프 제거
+      let cleanedContent = s.content || ""; // null이나 undefined 방지
+
+      if (cleanedContent) {
+        // 역슬래시 이스케이프 제거 및 개행 처리
+        cleanedContent = cleanedContent
+          .replace(/\\"/g, '"')
+          .replace(/("[^"]*")/g, '\n\n$1\n\n')
+          .replace(/\n\s*\n/g, '\n\n')
+          .trim();
+      }
 
       return { ...s, content: cleanedContent };
     })
@@ -65,19 +103,42 @@ export function StudioWriteContent() {
 
   // <Mutaion(수정 요청처리)>
   const { mutate: generateScene, isPending } = useMutation({
+    //mutationFn: async (payload) => { await new Promise(res => setTimeout(res, 2000)); return console.log(payload); },
     mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
-    onSuccess: (newScene) => {
-      console.log("새로운 장면 : ", newScene);
+    onMutate: async (newSceneRequest) => { // 서버에 요청 보내기 직전에 수행
+      //cancelQueries는 비동기로 동작 : 현재 실행 중인 데이터 fetching을 강제로 멈추는 것
+      // 수동으로 화면 바꿀 거니까, 서버에서 가져오던 건 일단 다 취소
+      await queryClient.cancelQueries({ queryKey: ['novel', 'scenes', novelId] });
+      const previousScenes = queryClient.getQueryData(['novel', 'scenes', novelId]); // 기존 데이터 스냅샷 저장 (에러 발생 시 복구용)
+      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => [ // 임시 저장 데이터를 리스트에 바로 저장
+        ...(old || []),
+        {
+          id: Date.now(), // 임시 ID
+          userInput: newSceneRequest.content || "(자동 전개 중...)",
+          aiOutput: "", // AI 응답 대기 상태
+          isOptimistic: true, // UI에서 로딩 스피너 등을 보여주기 위한 플래그
+          sequenceOrder: (old?.length || 0) + 1 // 순서 임시 부여
+        }
+      ]);
+      return { previousScenes };
+    },
+    onSuccess: (newScene) => { // 성공 시
       setNewlyCreatedSceneId(newScene.sceneId); // 방금 생성된 새로운 장면 ID 저장
-      // 캐시 업데이트
-      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => [...(old || []), newScene]);
+
+      // 낙관적 업데이트 임시 데이터 제거, 진짜 데이터를 넣기
+      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
+        const filteredOld = old?.filter(s => !s.isOptimistic) || [];
+        return [...filteredOld, newScene];
+      });
+
+      // 최신 호감도로 교체
       queryClient.setQueryData(['novel', novelId], (oldNovel) => {
         if (!oldNovel) return oldNovel;
         return {
           ...oldNovel,
           characters: oldNovel.characters.map(char =>
             char.role === 'MAIN'
-              ? { ...char, affinity: newScene.affinity } // 최신 호감도로 교체
+              ? { ...char, affinity: newScene.affinity }
               : char
           )
         };
@@ -95,8 +156,25 @@ export function StudioWriteContent() {
       setIsAutoMode(false);
       if (textareaRef.current) textareaRef.current.style.height = 'auto';
     },
-    onError: () => alert(`${getJosa(mainCharacter.name, "이", "가")} 대답을 망설이고 있네요. 다시 시도해 주세요.`)
+    onError: (err, newScene, context) => {
+      if (context?.previousScenes) {
+        queryClient.setQueryData(['novel', 'scenes', novelId], context.previousScenes);
+      }
+      alert(`${getJosa(mainCharacter.name, "이", "가")} 대답을 망설이고 있네요. 다시 시도해 주세요.`);
+    }
   });
+  /**
+   * 사용자: "전송" 클릭.
+onMutate:
+서버 데이터 가져오던 거 멈춰 (cancelQueries)
+현재 화면 데이터 백업해둬 (previousScenes)
+화면에 내가 쓴 글 일단 바로 보여줘 (setQueryData)
+서버: (전송 중...)
+결과 A (성공): onSuccess가 실행되어 서버에서 준 진짜 ID와 데이터를 화면에 덮어씌움.
+결과 B (실패): onError가 실행되어 아까 백업해둔 previousScenes로 화면을 원상복구함.
+   * 
+   * 
+   */
 
   // <Effects>
   // 소설 못찾았을 때
@@ -138,7 +216,7 @@ export function StudioWriteContent() {
 
   // <etcFn>
   // textarea 창 도우미 버튼 핸들러
-  const handleAddParentheses = () => {
+  const handleAddParentheses = useCallback(() => {
     const textarea = textareaRef.current;
     if (!textarea) return;
     const { selectionStart: start, selectionEnd: end } = textarea;
@@ -148,7 +226,7 @@ export function StudioWriteContent() {
       textarea.focus();
       textarea.setSelectionRange(start + 1, start + 1);
     }, 0);
-  };
+  }, []);
 
   // 로딩 중 스피너
   if (isNovelLoading || isScenesLoading) return <LoadingScreen text={mainCharacter.name ? `${getJosa(mainCharacter.name, "을", "를")} 불러오는 중입니다...` : "세계관을 불러오는 중입니다..."} />
@@ -190,9 +268,9 @@ export function StudioWriteContent() {
         <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar">
           <div className="max-w-3xl mx-auto px-6 py-12 space-y-16">
             {scenes.map((scene, index) => {
-              console.log(scene);
+              const sceneKey = scene.id || scene.sceneId || `scene-${index}`;
               return (
-                <div key={scene.novelId + index}>
+                <div key={sceneKey}>
                   <SceneArticle scene={scene} shouldType={scenes.length - 1 === index && scene.sceneId === newlyCreatedSceneId} mainScrollRef={mainScrollRef} />
                 </div>
               )
@@ -250,42 +328,65 @@ export function StudioWriteContent() {
 const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
   // shouldType이 true일 때만 타이핑 훅을 실행하고, 아니면 원본 그대로 노출
   const typingText = useTypingEffect(shouldType ? scene.content : "", 25);
-  // 타이핑 효과를 쓸 상황이면 typingText를, 아니면 원래 content를 사용
   const content = shouldType ? typingText : scene.content;
-  const userInput = scene.sequenceOrder !== 0 && scene.userInput;
-  console.log("userInput : ", userInput);
-  const isTyping = shouldType && typingText.length < scene.content.length;
+
+  // 상태 판별
+  const isTyping = shouldType && typingText.length < (scene.content?.length || 0);
+  const isPendingAI = scene.isOptimistic; // 서버 응답 대기 중인 낙관적 데이터 유무 판별
+
+  // 사용자 입력값
+  // 낙관적 데이터이거나, sequenceOrder가 0이 아닌 서버 데이터일 때
+  const hasUserInput = (isPendingAI || scene.sequenceOrder !== 0) && scene.userInput;
+  console.log(`[Render Check] ID: ${scene.sceneId}, Order: ${scene.sequenceOrder}, HasInput: ${!!scene.userInput}, Final: ${hasUserInput}`);
 
   useEffect(() => {
     if (isTyping && mainScrollRef.current) {
       const scrollContainer = mainScrollRef.current;
       scrollContainer.scrollTo({
         top: scrollContainer.scrollHeight,
-        behavior: 'auto'
+        behavior: 'smooth'
       });
     }
-  }, [typingText, isTyping, mainScrollRef]);
+  }, [typingText, isTyping, isPendingAI, mainScrollRef]);
 
   return (
-    <div key={scene.id} >
-      {userInput && <article className="bg-slate-800 rounded-xl p-3 mb-10">
-        <p className="text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">{userInput}</p>
-      </article> }
-      <article className="animate-fadeIn">
-        <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
-          <FormatContent text={content} />
-        </p>
-        {isTyping && (
-          <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
+    <div key={scene.id} className="mb-10">
+      {/* 사용자 입력 영역: 낙관적 상태일 때도 즉시 나타남 */}
+      {hasUserInput && (
+        <article className={`bg-[#1e293b] rounded-xl p-4 mb-6 border border-[#334155] transition-all
+          ${isPendingAI ? 'opacity-70 border-[#FB7185]/40 ring-1 ring-[#FB7185]/20 shadow-[0_0_15px_rgba(251,113,133,0.1)]' : ''}`}>
+          <p className="text-base leading-[1.8] text-[#94A3B8] whitespace-pre-wrap tracking-wide">
+            {scene.userInput}
+          </p>
+        </article>
+      )}
+
+      {/* AI 응답 영역 */}
+      <article className="animate-fadeIn min-h-[24px]">
+        {isPendingAI ? (
+          /* 낙관적 UI: AI가 생각 중일 때 보여줄 로딩 표시 */
+          <div className="flex items-center gap-2 text-[#FB7185] text-sm italic animate-pulse">
+            <Sparkles size={16} />
+            AI가 장면을 구상 중입니다...
+          </div>
+        ) : (
+          /* 실제 서버 데이터 노출 */
+          <>
+            <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
+              <FormatContent text={content} />
+              {isTyping && (
+                <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
+              )}
+            </p>
+          </>
         )}
       </article>
-
     </div>
   );
-}
+};
 
 // 조건부 툴바 컴포넌트
-const EditorToolbar = ({ isPending, isAutoMode, setIsAutoMode, onAddParentheses }) => {
+const EditorToolbar = memo(({ isPending, isAutoMode, setIsAutoMode, onAddParentheses }) => {
   if (!isPending)
     return (<section className="flex items-center gap-2 mb-2">
       {!isAutoMode && (
@@ -309,7 +410,7 @@ const EditorToolbar = ({ isPending, isAutoMode, setIsAutoMode, onAddParentheses 
       </button>
     </section>
     )
-}
+});
 
 // 조건부 작성창 컴포넌트
 const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isPending, onSend }) => {
@@ -358,31 +459,21 @@ const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAu
   }
 }
 
-// 관계 등급
+// 현재 소설 관계 등급 조회 (점수 기반)
 const getRelationLevel = (score) => {
-  if (score >= 300) return { level: 4, name: "연인", color: "#FB7185" }; // 로즈
-  if (score >= 200) return { level: 3, name: "썸", color: "#F472B6" };   // 핑크
-  if (score >= 100) return { level: 2, name: "친구", color: "#60A5FA" }; // 블루
-  return { level: 1, name: "지인", color: "#94A3B8" };               // 슬레이트
+  return Object.values(RELATION_CONFIG)
+    .sort((a, b) => b.threshold - a.threshold) // 높은 점수부터 비교
+    .find(r => score >= r.threshold) || RELATION_CONFIG.ACQUAINTANCE;
 };
 
 // 관계 등급 레벨 알림 모달
 const LevelModal = ({ isOpen, onClose, newLevel }) => {
-  // 등급별 한글 명칭 및 간단한 설명
-  const levelInfo = {
-    'ACQUAINTANCE': { name: '지인', desc: '서로의 존재를 인지하기 시작했습니다.' },
-    'FRIEND': { name: '친구', desc: '함께 있으면 편안한 사이가 되었습니다.' },
-    'SOME': { name: '썸', desc: '공기 중에 묘한 긴장감이 흐르기 시작합니다.' },
-    'LOVER': { name: '연인', desc: '이제 서로가 없이는 안 되는 사이입니다.' },
-  };
-
-  const current = levelInfo[newLevel] || { name: newLevel, desc: '' };
+  const current = RELATION_CONFIG[newLevel] || RELATION_CONFIG.ACQUAINTANCE;
 
   return (
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          {/* 배경 흐림 처리 */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -391,23 +482,27 @@ const LevelModal = ({ isOpen, onClose, newLevel }) => {
             className="absolute inset-0 bg-[#0f172a]/80 backdrop-blur-sm"
           />
 
-          {/* 모달 본체 */}
           <motion.div
             initial={{ scale: 0.8, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.8, opacity: 0, y: 20 }}
-            className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-[#1e293b] border border-[#FB7185]/30 p-8 text-center shadow-2xl"
+            className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-[#1e293b] border p-8 text-center shadow-2xl"
+            style={{ borderColor: `${current.color}44` }} // 등급 색상을 테두리에 반영 (투명도 44 추가)
           >
-            {/* 상단 빛 효과 */}
-            <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 bg-[#FB7185]/20 blur-[60px]" />
+            {/* 상단 빛 효과 - 등급 색상에 따라 변함 */}
+            <div
+              className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 blur-[60px] opacity-20"
+              style={{ backgroundColor: current.color }}
+            />
 
             <motion.div
               initial={{ rotate: -10, scale: 0 }}
               animate={{ rotate: 0, scale: 1 }}
               transition={{ delay: 0.2, type: 'spring' }}
-              className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[#FB7185]/10 text-4xl"
+              className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full text-4xl"
+              style={{ backgroundColor: `${current.color}15` }} // 배경에 살짝 색상 가미
             >
-              ❤️
+              {current.level === 4 ? '❤️' : current.level === 3 ? '✨' : '⭐'}
             </motion.div>
 
             <h3 className="mb-2 text-[#94A3B8] text-sm tracking-widest uppercase font-medium">
@@ -415,7 +510,7 @@ const LevelModal = ({ isOpen, onClose, newLevel }) => {
             </h3>
 
             <h2 className="mb-4 text-3xl font-bold text-[#F1F5F9]">
-              {current.name}
+              <span style={{ color: current.color }}>{current.name}</span>
             </h2>
 
             <p className="mb-8 text-[#94A3B8] leading-relaxed">
@@ -424,7 +519,11 @@ const LevelModal = ({ isOpen, onClose, newLevel }) => {
 
             <button
               onClick={onClose}
-              className="w-full rounded-xl bg-[#FB7185] py-4 font-bold text-white transition-all hover:bg-[#e11d48] active:scale-95 shadow-lg shadow-[#FB7185]/20"
+              className="w-full rounded-xl py-4 font-bold text-white transition-all active:scale-95 shadow-lg"
+              style={{
+                backgroundColor: current.color,
+                boxShadow: `0 10px 15px -3px ${current.color}33`
+              }}
             >
               관계를 이어가기
             </button>
