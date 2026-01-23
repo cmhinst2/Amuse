@@ -17,12 +17,14 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
 @Entity
 @Table(name = "novel_stats")
 @Getter @Setter
 @NoArgsConstructor @AllArgsConstructor
 @Builder
+@ToString
 public class NovelStats {
     @Id
     private Long novelId;

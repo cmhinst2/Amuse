@@ -24,8 +24,6 @@ export default function LoginPage() {
     window.location.href = kakaoUrl;
   };
 
-  const handleAmuseLogin = () => {}
-
   return (
     <div className="flex flex-1 items-center justify-center">
       <div className="w-full max-w-sm p-12 bg-slate-800 border border-slate-800 rounded-sm shadow-[0_20px_50px_rgba(0,0,0,0.8)]">

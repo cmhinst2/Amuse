@@ -84,6 +84,8 @@ public class NovelController {
 	                    .content(lastScene.getAiOutput())
 	                    .sequenceOrder(lastScene.getSequenceOrder())
 	                    .build())
+	            .authorId(novel.getAuthor().getId())
+	            .authorName(novel.getAuthor().getNickname())
 	            .build());
 	}
 	
@@ -106,5 +108,16 @@ public class NovelController {
 	public ResponseEntity<List<StorySceneResponse>> getScenes(@PathVariable("novelId") Long novelId) {
 	    List<StorySceneResponse> scenes = novelService.getScenes(novelId);
 	    return ResponseEntity.ok(scenes);
+	}
+	
+	/** userId와 일치하는 소설 목록 조회
+	 * @param userId
+	 * @return
+	 */
+	@GetMapping("list/{userId}")
+	public ResponseEntity<List<NovelResponseDTO>> getMyNovelList(@PathVariable("userId") int userId) {
+		List<NovelResponseDTO> novelList = novelService.getMyNovelList(userId);
+		log.debug("novelList : {}", novelList);
+		return ResponseEntity.ok(novelList);
 	}
 }

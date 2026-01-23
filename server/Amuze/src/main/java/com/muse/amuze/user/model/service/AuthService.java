@@ -15,7 +15,7 @@ public interface AuthService {
 	 * @param profileImage
 	 * @return
 	 */
-	Map<String, String> loginKakao(KakaoLoginRequest request);
+	Map<String, Object> loginKakao(KakaoLoginRequest request);
 
 	/** 로그아웃 서비스
 	 * @param userEmail

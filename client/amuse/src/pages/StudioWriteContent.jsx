@@ -63,16 +63,16 @@ export function StudioWriteContent() {
   // <Data fetch>
   // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등 (TanStack Query)
   const { data: novelData, isLoading: isNovelLoading, isError } = useQuery({
-    queryKey: ['novel', novelId], // 구독
+    queryKey: ['novel', novelId],
     queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId, // novelId가 있을 때만 실행
-    staleTime: 1000 * 60 * 60, // 5분간 데이터를 유지
+    staleTime: 1000 * 60 * 60, // 1시간 데이터를 유지
     gcTime: 1000 * 60 * 120,    // 2시간 후 메모리에서 삭제
   });
 
   // 이전 소설 장면 fetch
   const { data: scenes = [], isLoading: isScenesLoading } = useQuery({
-    queryKey: ['novel', 'scenes', novelId], // 구독
+    queryKey: ['novel', 'scenes', novelId],
     queryFn: () => novelAPI.get(`/api/novel/${novelId}/scenes`).then(res => res.data),
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5,

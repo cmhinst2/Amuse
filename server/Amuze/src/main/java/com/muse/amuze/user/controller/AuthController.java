@@ -37,13 +37,14 @@ public class AuthController {
      * 프론트엔드에서 카카오로부터 받은 정보를 전달받음
      */
     @PostMapping("/kakao")
-    public ResponseEntity<Map<String, String>> kakaoLogin(@RequestBody @Valid KakaoLoginRequest request) {
+    public ResponseEntity<Map<String, Object>> kakaoLogin(@RequestBody @Valid KakaoLoginRequest request) {
         // AuthService를 통해 유저 저장 및 Amuse 전용 토큰 발행
-        Map<String, String> tokens = authService.loginKakao(request);
+        Map<String, Object> tokens = authService.loginKakao(request);
         
-        String accessToken = tokens.get("accessToken");
-        String refreshToken = tokens.get("refreshToken");
-        String nickname = tokens.get("nickname");
+        String accessToken = (String) tokens.get("accessToken");
+        String refreshToken = (String) tokens.get("refreshToken");
+        String nickname = (String) tokens.get("nickname");
+        int id = (int) tokens.get("id");
 
         ResponseCookie refreshTokenCookie = ResponseCookie.from("refreshToken", refreshToken)
                 .httpOnly(true)
@@ -55,7 +56,8 @@ public class AuthController {
                 .header(HttpHeaders.SET_COOKIE, refreshTokenCookie.toString())
                 .body(Map.of(
                     "accessToken", accessToken,
-                    "nickname", nickname
+                    "nickname", nickname,
+                    "id", id
                 ));
     }
     

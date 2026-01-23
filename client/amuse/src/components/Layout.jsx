@@ -1,6 +1,6 @@
 
 import LoginPage from "../pages/LoginPage";
-import { Routes, Route, Navigate } from "react-router-dom";
+import { Routes, Route, Navigate, useParams } from "react-router-dom";
 import KakaoCallback from "./KakaoCallback";
 import Header, { Footer } from "./Form";
 import useAuthStore from "../store/authStore";
@@ -13,6 +13,9 @@ import Notice from "../pages/Notice";
 import Event from "../pages/Event";
 import StudioWriteSetting from "../pages/StudioWriteSetting";
 import { StudioWriteContent } from "../pages/StudioWriteContent";
+import { useQuery } from "@tanstack/react-query";
+import novelAPI from "../api/novelAPI";
+import { LoadingScreen } from "./Spinner";
 
 
 export default function Layout() {
@@ -40,7 +43,7 @@ export default function Layout() {
                     <Route path="/" element={<Home />} />
                     <Route path="/studio" element={<Studio />} />
                     <Route path="/studio/write" element={<StudioWriteSetting />} />
-                    <Route path="/studio/write/:novelId" element={<StudioWriteContent />} />
+                    <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />
@@ -60,3 +63,28 @@ export default function Layout() {
     </div>
   );
 }
+
+
+const NovelAuthorGuard = ({ children }) => {
+  const { novelId } = useParams();
+  const userInfo  = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보 (Context 등에서 가져옴)
+
+  // 내가 쓴 소설 데이터 조회
+  const { data: novel, isLoading } = useQuery({
+    queryKey: ['novel', novelId],
+    queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+    enabled: !!novelId
+  });
+  
+  console.log(novel);
+
+  if (isLoading) return <LoadingScreen text={'내 소설을 조회 중 입니다...'} />;
+
+  // 작성자가 아니면 홈으로 이동
+  if (novel && novel.authorId !== userInfo.id) {
+    alert("본인의 소설만 수정할 수 있습니다.");
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};

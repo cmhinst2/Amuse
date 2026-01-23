@@ -1,29 +1,37 @@
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Form";
+import { useQuery } from "@tanstack/react-query";
+import useAuthStore from "../store/authStore";
+import novelAPI from "../api/novelAPI";
+import { LoadingScreen } from "../components/Spinner";
+import { BookPlus, Eye, Heart } from "lucide-react";
 
 export default function Studio() {
   const navigate = useNavigate();
+  const { id, nickname, profileImage } = useAuthStore((state) => state.userInfo);
 
-  // 더미 데이터
-  const myNovels = [
-    { id: 1, title: '심연의 독자가 깨어날 때', status: '연재중', updates: '24화', likes: 1240 },
-    { id: 2, title: 'Amuse와 함께하는 리액트', status: '완결', updates: '50화', likes: 890 },
-  ];
+  // <Data fetch>
+  // 내가 쓴 소설 목록 fetch
+  const { data: novelList = [], isLoading: isNovelListLoading, isError } = useQuery({
+    queryKey: ['novelList', id],
+    queryFn: () => novelAPI.get(`/api/novel/list/${id}`).then(res => res.data),
+    enabled: !!id,
+    staleTime: 1000 * 60 * 5
+  });
+
+  if (isNovelListLoading) <LoadingScreen text={`${nickname}님의 소설을 불러오는 중 입니다...`} />
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
-      {/* 1. 사이드바 (공통 유지) */}
       <Sidebar />
 
       <main className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* 2. 헤더 영역 (Home 구조와 동일하게 유지) */}
         <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
           <div className="flex items-center gap-8 overflow-hidden flex-1">
             <h1 className="text-xl font-black text-[#FB7185] tracking-tight shrink-0">
               내 스튜디오
             </h1>
 
-            {/* 작가 활동 통계 캐러셀 (Home의 작가 캐러셀 구조 재활용) */}
             <div className="relative flex overflow-hidden max-w-3xl group">
               <div className="flex animate-scroll whitespace-nowrap gap-4 py-1">
                 {[...Array(2)].map((_, i) => (
@@ -52,28 +60,21 @@ export default function Studio() {
           </div>
 
           <div className="flex items-center gap-4 shrink-0">
-            <button 
+            <button
               onClick={() => navigate('/studio/write')}
               className="px-5 py-2 text-sm font-bold transition-all rounded-full bg-[#FB7185] text-[#0f172a] hover:scale-105 shadow-[0_0_15px_rgba(251,113,133,0.2)]"
             >
               새 작품 집필 +
             </button>
-            <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-[#FB7185] to-[#334155] p-[2px]">
-              <div className="w-full h-full rounded-full bg-[#0f172a] flex items-center justify-center font-bold text-[#FB7185]">
-                W
-              </div>
-            </div>
           </div>
         </header>
 
-        {/* 3. 섹션 영역 */}
         <section className="p-8 space-y-12">
-          {/* 배너: Home의 Editor's Pick 구조 재활용 */}
           <article className="relative h-64 overflow-hidden rounded-[2rem] border border-[#334155]/30 group">
             <div className="absolute inset-0 bg-gradient-to-br from-[#1e293b] via-[#0f172a] to-[#1e293b]" />
             <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-[#FB7185]/20 blur-[100px] rounded-full group-hover:bg-[#FB7185]/30 transition-all duration-700 mix-blend-screen" />
 
-            <div className="relative z-10 flex flex-col justify-center h-full px-12 space-y-4">
+            <div className="relative z-5 flex flex-col justify-center h-full px-12 space-y-4">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse" />
                 <span className="text-xs font-bold tracking-[0.2em] text-emerald-400 uppercase">
@@ -92,46 +93,122 @@ export default function Studio() {
             </div>
           </article>
 
-          {/* 작품 리스트 (Home의 그리드 구조 변형) */}
           <div>
             <div className="flex items-center justify-between mb-8">
-              <h3 className="text-2xl font-bold border-l-4 border-[#FB7185] pl-4">내 연재 목록</h3>
+              <h3 className="text-2xl font-bold border-l-4 border-[#FB7185] pl-4">내 작품 목록</h3>
             </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              {myNovels.map((novel) => (
-                <div onClick={() => navigate('/studio/write')}
-                  key={novel.id} 
-                  className="flex cursor-pointer items-center justify-between p-6 bg-[#1e293b] rounded-[2rem] border border-[#1e293b] hover:border-[#FB7185]/40 transition-all group"
-                >
-                  <div className="flex items-center gap-6">
-                    <div className="w-16 h-20 bg-[#0f172a] rounded-xl border border-[#334155] flex items-center justify-center overflow-hidden">
-                      <div className="text-xl font-serif italic text-[#FB7185]/30 group-hover:text-[#FB7185]/60 transition-colors">A</div>
-                    </div>
-                    <div>
-                      <h4 className="text-lg font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors">{novel.title}</h4>
-                      <div className="flex gap-3 mt-2">
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#334155] text-[#94A3B8] font-bold uppercase tracking-wider">{novel.status}</span>
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#0f172a] text-[#94A3B8] font-bold">{novel.updates}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-8">
-                    <div className="hidden md:block text-right">
-                      <p className="text-xs text-[#94A3B8] uppercase font-bold tracking-tighter">Likes</p>
-                      <p className="text-lg font-black text-[#F1F5F9]">{novel.likes.toLocaleString()}</p>
-                    </div>
-                    <button className="px-6 py-2 text-sm font-bold bg-[#334155] text-[#F1F5F9] rounded-xl hover:bg-[#F1F5F9] hover:text-[#0f172a] transition-all">
-                      작품 관리
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <NovelList data={novelList} isOwner={true} />
           </div>
         </section>
       </main>
     </div>
   );
+}
+
+// 작품 List 컴포넌트 분리
+export const NovelList = ({ data, isOwner }) => {
+  const navigate = useNavigate();
+  
+  if (isOwner && data.length == 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[400px] p-8 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
+        <div className="mb-6 p-4 rounded-full bg-[#0f172a] border border-[#334155]">
+          <BookPlus size={48} className="text-[#94A3B8]" />
+        </div>
+
+        <h3 className="text-2xl font-bold text-[#FB7185] mb-2">
+          아직 시작되지 않은 이야기
+        </h3>
+        <p className="text-[#94A3B8] text-center mb-8 leading-relaxed">
+          텅 빈 페이지가 당신의 상상력을 기다리고 있습니다. <br />
+          첫 번째 서사를 지금 바로 써 내려가 보세요.
+        </p>
+
+        <button
+          onClick={() => navigate('/studio/write')}
+          className="px-8 py-3 bg-[#FB7185] hover:bg-[#e11d48] text-[#F1F5F9] font-bold rounded-lg transition-all transform hover:scale-105 active:scale-95 shadow-lg shadow-rose-500/20"
+        >
+          첫 작품 시작하기
+        </button>
+      </div>
+    )
+  }
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      {data.map((novel, index) => (
+        <div
+          key={`${novel.id}_${index}`}
+          onClick={() => navigate(`/studio/write/${novel.id}`)}
+          className="group relative flex flex-col cursor-pointer transition-all duration-300"
+        >
+          <div className="relative z-10 w-full aspect-[3/4] rounded-r-lg overflow-hidden shadow-[10px_10px_20px_rgba(0,0,0,0.5)] group-hover:shadow-[15px_15px_30px_rgba(251,113,133,0.3)] group-hover:-translate-y-2 transition-all duration-300">
+            <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-r from-black/30 to-transparent z-20" />
+
+            {novel.coverImageUrl ? (
+              <img
+                src={`http://localhost${novel.coverImageUrl}`}
+                alt={novel.title}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full bg-[#1e293b] flex items-center justify-center border border-[#334155]">
+                <span className="text-[#FB7185]/20 font-serif italic text-2xl">Amuse</span>
+              </div>
+            )}
+
+            <div className="absolute bottom-0 left-0 right-0 h-1/2 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/90 to-transparent p-4 flex flex-col justify-end translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out z-20">
+              <h1 className="text-[#F1F5F9] font-bold mb-1 ">{novel.mainCharName}</h1>
+              <p className="text-[#F1F5F9] text-[13px] leading-snug line-clamp-3 mb-1 font-medium">
+                {novel.description || "작성된 작품 설명이 없습니다."}
+              </p>
+              <div className="h-[2px] w-6 bg-[#FB7185] rounded-full mt-1 mb-2" />
+            </div>
+
+            <div className="absolute top-3 left-3 z-30">
+              <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md 
+            ${novel.isShared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                {novel.isShared ? '연재 중' : '비공개'}
+              </span>
+            </div>
+          </div>
+
+          <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[85%] h-4 bg-black/50 blur-xl rounded-[100%] group-hover:opacity-70 transition-opacity" />
+
+          <div className="mt-4 px-1">
+            <div className="flex flex-col gap-1">
+              <h4 className="text-base font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
+                {novel.title}
+              </h4>
+
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <Heart size={14} className={novel.likeCount > 0 ? "fill-[#FB7185] text-[#FB7185]" : "text-[#94A3B8]"} />
+                  <span className="text-xs font-medium text-[#94A3B8]">{novel.likeCount}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Eye size={14} className="text-[#94A3B8]" />
+                  <span className="text-xs font-medium text-[#94A3B8]">{novel.viewCount}</span>
+                </div>
+              </div>
+            </div>
+            {
+              isOwner &&
+              <div className="flex items-center justify-between mt-3">
+                <span className={`text-[13px] font-medium px-2 py-0.5 rounded border ${novel.status == 'PROCESS'
+                  ? 'text-[#818cf8] border-[#818cf8]/30 bg-[#818cf8]/5'
+                  : 'text-[#94A3B8] border-[#334155]'
+                  }`}>
+                  {novel.status === 'PROCESS' ? '집필 중' : '집필 완료'}
+                </span>
+
+                <button className="text-[10px] font-bold text-[#FB7185] hover:underline">
+                  작품 관리 →
+                </button>
+              </div>
+            }
+          </div>
+        </div>
+      ))}
+    </div>
+  )
 }

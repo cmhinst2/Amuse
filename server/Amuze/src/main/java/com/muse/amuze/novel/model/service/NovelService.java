@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
+import com.muse.amuze.novel.model.dto.NovelResponseDTO;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
 import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Novel;
@@ -44,6 +45,12 @@ public interface NovelService {
 	 * @return
 	 */
 	StoryScene findLastSceneByNovelId(Long novelId);
+
+	/** userId와 일치하는 소설 List 조회
+	 * @param userId
+	 * @return
+	 */
+	List<NovelResponseDTO> getMyNovelList(int userId);
 
 
 }

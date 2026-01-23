@@ -54,9 +54,6 @@ public class FileConfig implements WebMvcConfigurer{
 		
 	}
 	
-	
-	
-	
 	// MultipartResolver 설정
 	@Bean
 	public MultipartConfigElement configElement() {

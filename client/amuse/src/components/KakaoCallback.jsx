@@ -79,10 +79,11 @@ export default function KakaoCallback() {
       // 아까 만든 Spring Boot의 AuthController 호출
       const response = await axiosAPI.post("/api/auth/kakao", loginRequest);
       const { accessToken } = response.data;
+      const { id } = response.data;
       const { nickname, profileImage, email } = loginRequest;
 
       // store 저장
-      login(accessToken, { nickname, profileImage, email });
+      login(accessToken, { nickname, profileImage, email, id });
       navigate('/'); // 메인으로 이동
       
     } catch (error) {

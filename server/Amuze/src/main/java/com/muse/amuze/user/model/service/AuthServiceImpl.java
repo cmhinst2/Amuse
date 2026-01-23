@@ -31,7 +31,7 @@ public class AuthServiceImpl implements AuthService{
 	 */
 	@Override
 	@Transactional
-	public Map<String, String> loginKakao(KakaoLoginRequest request) {
+	public Map<String, Object> loginKakao(KakaoLoginRequest request) {
 		// 1. 유저 존재 여부 확인 (없으면 가입)
         User user = userRepository.findBySocialId(request.getSocialId()) // 반환 타입 Optional<User> 
         		// Optional은 결과가 있을 수도 있고(User), 없을 수도(null) 있음
@@ -54,10 +54,11 @@ public class AuthServiceImpl implements AuthService{
         user.updateRefreshToken(refreshToken);
 
         // 3. 응답 데이터 구성
-        Map<String, String> tokenMap = new HashMap<>();
+        Map<String, Object> tokenMap = new HashMap<>();
         tokenMap.put("accessToken", accessToken);
         tokenMap.put("refreshToken", refreshToken);
         tokenMap.put("nickname", user.getNickname());
+        tokenMap.put("id", user.getId());
 
         return tokenMap;
 	}

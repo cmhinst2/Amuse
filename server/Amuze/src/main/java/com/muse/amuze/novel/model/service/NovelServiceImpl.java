@@ -6,6 +6,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 import org.springframework.ai.chat.messages.AssistantMessage;
@@ -26,6 +27,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.amuze.common.util.Utility;
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
+import com.muse.amuze.novel.model.dto.NovelResponseDTO;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
 import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Character;
@@ -292,6 +294,40 @@ public class NovelServiceImpl implements NovelService {
 				.stream()
 				.map(StorySceneResponse::from)
 				.toList();
+	}
+	
+	
+	/** userId와 일치하는 소설 List 조회
+	 *
+	 */
+	@Transactional
+	@Override
+	public List<NovelResponseDTO> getMyNovelList(int userId) {
+	    List<Novel> novelList = novelRepository.findNovelsByAuthorId(userId);
+	    
+	    List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
+	    
+	    List<NovelStats> statsList = novelStatsRepository.findStatsByNovelIds(novelIds); // 해당 소설의 통계 정보만 한번에 조회
+	    Map<Long, NovelStats> statsMap = statsList.stream()
+	    		.collect(Collectors.toMap(NovelStats::getNovelId, s -> s));
+	    
+	    List<Character> characters = characterRepository.findMainCharactersByNovelIds(novelIds);
+	    Map<Long, Character> characterMap = characters.stream()
+	            .collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c,
+	                (existing, replacement) -> existing // 중복 시 기존값 유지
+	            ));
+
+	    return novelList.stream()
+	    		.map(novel -> {
+	                // 해당 소설의 통계 정보와 캐릭터 정보를 각각 Map에서 꺼냄
+	                NovelStats stats = statsMap.get(novel.getId());
+	                Character mainChar = characterMap.get(novel.getId());
+	                
+	                // DTO의 of 메서드에 함께 전달
+	                return NovelResponseDTO.of(novel, stats, mainChar);
+	            })
+	            .toList();
+		
 	}
 
 	// User의 메시지 전달 및 AI 답변 반환받기
