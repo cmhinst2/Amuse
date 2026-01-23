@@ -98,12 +98,14 @@ public class NovelServiceImpl implements NovelService {
 
 		// 캐릭터 설정 정보 요약
 		// AI 컨텍스트용으로 쓰기 위해 캐릭터 리스트를 하나의 텍스트로 합침
-		String combinedSettings = request.getCharacters().stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
+		String combinedSettings = request.getCharacters()
+				.stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
 				c.getName(), c.getRole(), c.getGender(), c.getPersonality(), c.getAppearance()))
 				.collect(Collectors.joining("\n"));
 
 		// 소설 기본 뼈대 저장
-		Novel novel = Novel.builder().author(user) // 작가정보
+		Novel novel = Novel.builder()
+				.author(user) // 작가정보
 				.title(request.getTitle()) // 제목
 				.description(request.getDescription()) // 짧은소개글
 				.tags(request.getTags()) // 태그
@@ -119,8 +121,11 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 개별 엔티티 저장
 		if (request.getCharacters() != null && !request.getCharacters().isEmpty()) {
 			List<Character> characterEntities = request.getCharacters().stream()
-					.map(charDto -> Character.builder().novel(savedNovel).name(charDto.getName())
-							.role(charDto.getRole()).personality(charDto.getPersonality())
+					.map(charDto -> Character.builder()
+							.novel(savedNovel)
+							.name(charDto.getName())
+							.role(charDto.getRole())
+							.personality(charDto.getPersonality())
 							.appearance(charDto.getAppearance()).gender(charDto.getGender()).affinity(0) // 초기 호감도 0
 							.relationshipLevel("ACQUAINTANCE") // 초기 관계 '지인'
 							.build())

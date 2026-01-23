@@ -35,7 +35,7 @@ export default function StudioWriteSetting() {
   const addSubCharacter = () => {
     setNovelData(prev => ({
       ...prev,
-      characters: [...prev.characters, { name: '', role: 'SUB', personality: '', appearance: '' }]
+      characters: [...prev.characters, { name: '', role: 'SUB', gender: 'M', personality: '', appearance: '' }]
     }));
   };
 
@@ -50,6 +50,7 @@ export default function StudioWriteSetting() {
 
   // 캐릭터 정보 변경 핸들러
   const handleCharacterChange = (index, field, value) => {
+    console.log("test", index, field, value);
     setNovelData(prev => {
       const newChars = [...prev.characters];
       newChars[index][field] = value;
@@ -82,6 +83,44 @@ export default function StudioWriteSetting() {
       return { ...prev, tags: newTags };
     });
   };
+
+  // 다음단계 핸들러
+  const handleNextStep = (step) => {
+    const hasValidTag = novelData.tags.some(tag => tag.trim() !== '');
+    if (step == 2) { // 2번으로 넘어가기 위함
+      if (novelData.title.trim().length == 0 || novelData.description.trim().length == 0) {
+        alert("제목과 소개글을 작성해주세요!");
+        return;
+      }
+      if (!hasValidTag) {
+        alert("태그를 최소 하나 이상 입력해주세요!");
+        return;
+      }
+      return setSetupStep(2);
+    }
+
+    if (step == 3) {
+      const checkCharsValid = novelData.characters.every(char => {
+        return char.name.trim() !== '' &&
+          char.appearance.trim() !== '' &&
+          char.personality.trim() !== '';
+      });
+
+      if (!checkCharsValid) {
+        alert("모든 캐릭터의 이름, 외형 및 특징, 성격 및 배경설정을 입력해주세요.");
+        return;
+      }
+
+      if (novelData.worldSetting.trim().length == 0) {
+        alert("세계관 및 기타 설정을 입력해주세요.");
+        return;
+      }
+      return setSetupStep(3);
+    }
+
+
+  }
+
 
   // <Mutations>
   // 소설 생성 Mutation
@@ -201,7 +240,7 @@ export default function StudioWriteSetting() {
                           className="w-full h-32 bg-[#1e293b] border border-[#1e293b] rounded-xl p-4 outline-none focus:border-[#FB7185] resize-none" />
                       </div>
 
-                      <button onClick={() => setSetupStep(2)} className="w-full py-4 bg-[#F1F5F9] text-[#0f172a] font-black rounded-2xl hover:bg-[#FB7185] hover:text-white transition-all">
+                      <button onClick={() => handleNextStep(2)} className="w-full py-4 bg-[#F1F5F9] text-[#0f172a] font-black rounded-2xl hover:bg-[#FB7185] hover:text-white transition-all">
                         다음 단계: 세계관 설정
                       </button>
                     </div>
@@ -315,7 +354,7 @@ export default function StudioWriteSetting() {
                       />
                     </div>
 
-                    <button onClick={() => setSetupStep(3)} className="w-full py-4 bg-[#F1F5F9] text-[#0f172a] font-black rounded-2xl hover:bg-[#FB7185] hover:text-white transition-all">
+                    <button onClick={() => handleNextStep(3)} className="w-full py-4 bg-[#F1F5F9] text-[#0f172a] font-black rounded-2xl hover:bg-[#FB7185] hover:text-white transition-all">
                       다음 단계: 첫 장면 작성하기
                     </button>
                   </div>
@@ -332,11 +371,17 @@ export default function StudioWriteSetting() {
                       placeholder="앞서 만든 캐릭터를 중심으로, 앞으로 꾸려나갈 이야기의 시작을 작성해보세요."
                       className="w-full h-80 bg-[#1e293b] resize-none border border-[#334155] rounded-[1.5rem] p-6 text-center outline-none focus:border-[#FB7185] transition-all" />
                     <button
-                      onClick={() => createNovelMutation.mutate(novelData)}
+                      onClick={() => {
+                        if (novelData.firstSceneInput.trim().length == 0) {
+                          alert("첫 장면을 작성해주세요.");
+                          return;
+                        }
+                        return createNovelMutation.mutate(novelData)
+                      }}
                       disabled={createNovelMutation.isPending}
                       className="w-full py-5 bg-[#FB7185] text-[#0f172a] font-black text-lg rounded-2xl hover:scale-[1.02] transition-all disabled:opacity-50 hover:text-white"
                     >
-                      {createNovelMutation.isPending ? "세계속으로 뛰어드는 중..." : "그 사람을 만나러가기"}
+                      {createNovelMutation.isPending ? "세계속으로 뛰어드는 중..." : "세계속으로 DIVE"}
                     </button>
                   </div>
                 )}

@@ -66,7 +66,8 @@ export function StudioWriteContent() {
     queryKey: ['novel', novelId], // 구독
     queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId, // novelId가 있을 때만 실행
-    staleTime: 1000 * 60 * 5, // 5분간 데이터를 유지
+    staleTime: 1000 * 60 * 60, // 5분간 데이터를 유지
+    gcTime: 1000 * 60 * 120,    // 2시간 후 메모리에서 삭제
   });
 
   // 이전 소설 장면 fetch

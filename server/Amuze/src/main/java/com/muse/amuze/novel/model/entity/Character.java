@@ -37,7 +37,7 @@ public class Character extends BaseTimeEntity {
 
     @Enumerated(EnumType.STRING) // DB에 문자열로 저장 ("MAIN", "SUB" 등)
     @Column(length = 20)
-    private CharacterRole role = CharacterRole.MAIN; // 기본값 SUB
+    private CharacterRole role = CharacterRole.MAIN;
 
     @Builder.Default
     private Integer affinity = 0;
