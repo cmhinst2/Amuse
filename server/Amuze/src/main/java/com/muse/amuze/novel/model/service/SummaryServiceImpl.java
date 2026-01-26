@@ -36,7 +36,7 @@ public class SummaryServiceImpl implements SummaryService {
 	private final NovelRepository novelRepository;
 	private final OpenAiChatModel chatModel;
 
-	@Value("classpath:prompts/gpt-system-prompt.txt")
+	@Value("classpath:prompts/summary-system-prompt.txt")
 	private Resource summaryPromptResource;
 
 	/** 최근 다섯개 씬의 내용 줄거리 요약

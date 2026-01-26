@@ -1,9 +1,6 @@
-import { useState, useRef, useEffect } from 'react'
 import { BrowserRouter } from 'react-router-dom';
 import Layout from './components/Layout';
-import axiosAPI from './api/axiosAPI';
-import useAuthStore from './store/authStore';
-
+import { Toaster } from 'sonner';
 function App() {
 
   // 화면 로딩 상태
@@ -40,6 +37,12 @@ function App() {
   return (
     <BrowserRouter>
       <Layout />
+      <Toaster 
+        theme="dark" 
+        position="top-center" 
+        expand={false} 
+        richColors 
+      />
     </BrowserRouter>
   )
 }

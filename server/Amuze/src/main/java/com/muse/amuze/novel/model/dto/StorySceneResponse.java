@@ -26,6 +26,8 @@ public class StorySceneResponse {
     private int sequenceOrder; 	   // 장면의 시퀀스 번호
     private String relationshipLevel; // 현재 관계 단계 (ACQUAINTANCE, SOME 등)
     private boolean levelUp;
+    private boolean isEdited; // 수정 유무
+    private boolean isRegenerated; // 재생성(ai)유무
 
     /** 새장면 생성 후 답변 변환하는 정적 메서드(실시간 생성용)
      * @param scene
@@ -34,17 +36,20 @@ public class StorySceneResponse {
      * @param character
      * @return
      */
-    public static StorySceneResponse of(StoryScene scene, int delta, String reason, Character character) {
+    public static StorySceneResponse of(StoryScene scene, int delta, String reason, Character character, boolean levelUp) {
         return StorySceneResponse.builder()
+        		.novelId(scene.getNovel().getId())
                 .content(scene.getAiOutput())
                 .userInput(scene.getUserInput())
                 .affinity(character.getAffinity())
                 .affinityDelta(delta)
+                .relationshipLevel(character.getRelationshipLevel())
+                .levelUp(false)
                 .reason(reason)
-                .novelId(scene.getNovel().getId())
                 .sceneId(scene.getId())
                 .sequenceOrder(scene.getSequenceOrder())
-                .relationshipLevel(character.getRelationshipLevel())
+                .isEdited(scene.isEdited())
+                .isRegenerated(scene.isRegenerated())
                 .build();
     }
     
@@ -61,6 +66,8 @@ public class StorySceneResponse {
                 .sceneId(scene.getId())
                 .sequenceOrder(scene.getSequenceOrder())
                 .levelUp(false) 
+                .isEdited(scene.isEdited())
+                .isRegenerated(scene.isRegenerated())
                 .build();
     }
 }

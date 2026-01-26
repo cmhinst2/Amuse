@@ -23,6 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.amuze.common.util.Utility;
@@ -67,8 +69,12 @@ public class NovelServiceImpl implements NovelService {
 	@Value("${amuse.novel.folder-path}")
 	private String novelFolderPath;
 
-	@Value("classpath:prompts/claude-system-prompt.txt")
+	@Value("classpath:prompts/write-system-prompt.txt")
 	private Resource aiSystemPromptResource;
+
+	// 컨텍스트 묶음
+	private record NovelContext(Novel novel, Character userChar, Character mainChar, List<StoryScene> previousScenes) {
+	}
 
 	/**
 	 * noveId에 맞는 소설 조회 서비스
@@ -154,7 +160,7 @@ public class NovelServiceImpl implements NovelService {
 	}
 
 	/**
-	 * 다음장면 생성 (AI) 서비스
+	 * 새로운(다음)장면 생성 (AI) 서비스
 	 * 
 	 * @param novelRequest
 	 * @return
@@ -163,20 +169,227 @@ public class NovelServiceImpl implements NovelService {
 	@Transactional
 	@Override
 	public StorySceneResponse generateNextScene(UserNovelRequest novelRequest) throws Exception {
-		// 소설 및 캐릭터 정보 조회
-		Novel novel = findNovelById(novelRequest.getNovelId());
+		// AI 전달용 message 데이터 준비(novel, userChar, mainChar, previousScenes)
+		NovelContext ctx = prepareContext(novelRequest.getNovelId());
 
-		// 메인 캐릭터 정보 가져오기 (호감도 반영/성별 확인을 위해)
-		Character userChar = characterRepository.findByNovelIdAndRole(novel.getId(), CharacterRole.USER);
-		Character mainChar = characterRepository.findByNovelIdAndRole(novel.getId(), CharacterRole.MAIN);
+		// AI 전달 message bulider로 생성
+		List<Message> messages = buildMessage(ctx, novelRequest.getContent());
 
-		// 이전 맥락 가져오기 (최근 3개 장면)
-		List<StoryScene> previousScenes = storySceneRepository.findTop3ByNovelIdOrderBySequenceOrderDesc(novel.getId());
-		Collections.reverse(previousScenes); // 시간순서대로 보이게 하기 위해 뒤집기
+		// AI 호출
+		String jsonResponse = getAiResponse(messages);
+
+		log.debug("AI Raw Response: {}", jsonResponse);
+
+		// AI 응답 파싱
+		JsonNode rootNode = objectMapper.readTree(jsonResponse);
+		String aiOutput = rootNode.get("ai_output").asText();
+		int affinityDelta = rootNode.get("affinity_delta").asInt();
+		String reason = rootNode.get("reason").asText();
+		String keyEvent = rootNode.get("key_event").asText();
+
+		// NovelContext에서 필요한 값 추출
+		Novel novel = ctx.novel();
+		Character mainChar = ctx.mainChar();
+		List<StoryScene> previousScenes = ctx.previousScenes();
+
+		// 호감도 및 관계 등급 업데이트
+		String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
+		mainChar.updateAffinity(affinityDelta); // 호감도 업뎃 후
+		String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
+
+		// 위에서 뒤집힌 List의 마지막 SequenceOrder 꺼내오기
+		int lastOrder = previousScenes.isEmpty() ? 0 : previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
+		// 새로운 장면(Scene) 저장
+		StoryScene newScene = StoryScene.builder()
+				.novel(novel)
+				.userInput(novelRequest.getContent())
+				.aiOutput(aiOutput)
+				.keyEvent(keyEvent)
+				.sequenceOrder(lastOrder + 1)
+				.affinityAtMoment(mainChar.getAffinity())
+				.build();
+
+		storySceneRepository.save(newScene);
+
+		// 5장면마다 줄거리 요약
+		if (newScene.getSequenceOrder() % 5 == 0) {
+			// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
+			summaryService.summarizeInterval(novel.getId());
+		}
+
+		// 응답 DTO 반환
+		return StorySceneResponse.of(newScene, affinityDelta, reason, mainChar, !oldLevel.equals(newLevel));
+	}
+
+	/**
+	 * 현재 장면(AI) 재생성 서비스
+	 * 
+	 * @param sceneId
+	 * @return
+	 * @throws JsonProcessingException 
+	 * @throws JsonMappingException 
+	 */
+	@Transactional
+	@Override
+	public StorySceneResponse regenerateScene(UserNovelRequest novelRequest) throws Exception {
+		// 기존 장면 조회
+		StoryScene scene = storySceneRepository
+				.findByNovelIdAndId(novelRequest.getNovelId(), novelRequest.getLastSceneId())
+				.orElseThrow(() -> new EntityNotFoundException("장면을 찾을 수 없습니다."));
+
+		if (scene.isRegenerated())
+			throw new IllegalStateException("이미 재생성된 장면입니다.");
+
+		// AI 전달용 message 데이터 준비(novel, userChar, mainChar, previousScenes)
+		NovelContext ctx = prepareContext(novelRequest.getNovelId());
+
+		// 기존장면에서 가져온 이전 호감도 변화 취소
+		// novel의 메인 캐릭터 호감도 복구
+		Character mainChar = ctx.mainChar();
+		mainChar.updateAffinity(-scene.getAffinityDelta()); // 이전 생성된 장면에서의 호감도 마이너스(복구)처리하기
+
+		// AI 전달 message bulider로 생성
+		List<Message> messages = buildMessage(ctx, scene.getUserInput()); // 이전에 사용자가 입력했던 값 그대로 다시 보내기
+
+		// AI에게 다시 요청하여 내용 갱신
+		String jsonResponse = getAiResponse(messages);
+
+		log.debug("AI regenerate: {}", jsonResponse);
+		
+		// AI 응답 파싱
+		JsonNode rootNode = objectMapper.readTree(jsonResponse);
+		String aiOutput = rootNode.get("ai_output").asText();
+		int affinityDelta = rootNode.get("affinity_delta").asInt();
+		String reason = rootNode.get("reason").asText();
+		String keyEvent = rootNode.get("key_event").asText();
+		
+		String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
+		mainChar.updateAffinity(affinityDelta); // character entity 새 호감도 반영
+		String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
+		
+		scene.setAiOutput(aiOutput);
+	    scene.setKeyEvent(keyEvent);
+	    scene.setAffinityDelta(affinityDelta); // story_scene 새로운 호감도 저장
+	    scene.setAffinityAtMoment(mainChar.getAffinity()); // 갱신된 누적 호감도 스냅샷
+
+		scene.setRegenerated(true); // 재생성 체크
+		scene.setEdited(true); // 재생성한 내용은 수정 불가
+
+		return StorySceneResponse.of(scene, affinityDelta, reason, mainChar, !oldLevel.equals(newLevel));
+	}
+
+	/**
+	 * 해당 소설 모든 기록 불러오기
+	 *
+	 */
+	@Override
+	public List<StorySceneResponse> getScenes(Long novelId) {
+		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
+	}
+
+	/**
+	 * userId와 일치하는 소설 List 조회
+	 *
+	 */
+	@Transactional
+	@Override
+	public List<NovelResponseDTO> getMyNovelList(int userId) {
+		List<Novel> novelList = novelRepository.findNovelsByAuthorId(userId);
+
+		List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
+
+		List<NovelStats> statsList = novelStatsRepository.findStatsByNovelIds(novelIds); // 해당 소설의 통계 정보만 한번에 조회
+		Map<Long, NovelStats> statsMap = statsList.stream().collect(Collectors.toMap(NovelStats::getNovelId, s -> s));
+
+		List<Character> characters = characterRepository.findMainCharactersByNovelIds(novelIds);
+		Map<Long, Character> characterMap = characters.stream()
+				.collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c, (existing, replacement) -> existing // 중복 시
+																													// 기존값
+																													// 유지
+				));
+
+		return novelList.stream().map(novel -> {
+			// 해당 소설의 통계 정보와 캐릭터 정보를 각각 Map에서 꺼냄
+			NovelStats stats = statsMap.get(novel.getId());
+			Character mainChar = characterMap.get(novel.getId());
+
+			// DTO의 of 메서드에 함께 전달
+			return NovelResponseDTO.of(novel, stats, mainChar);
+		}).toList();
+
+	}
+
+	/**
+	 * 마지막 장면 수정 서비스
+	 *
+	 */
+	@Transactional
+	@Override
+	public StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception {
+		// 해당 엔티티 조회
+		StoryScene scene = storySceneRepository
+				.findByNovelIdAndId(novelRequest.getNovelId(), novelRequest.getLastSceneId())
+				.orElseThrow(() -> new EntityNotFoundException("해당 장면을 찾을 수 없습니다."));
+
+		// 내용 업데이트(수정한 콘텐트)
+		scene.setAiOutput(novelRequest.getContent());
+
+		// AI 요청(key_event 생성 및 수정)
+		String changeKeyEventPrompt = "작성된 내용 : " + novelRequest.getContent()
+				+ "\n당신은 전문 편집자입니다. 위 내용을 2문장 이내의 keyEvent로 요약하세요.";
+		String newKeyEvent = chatModel.call(changeKeyEventPrompt);
+		scene.setKeyEvent(newKeyEvent);
+
+		// 만약 해당 행에 summary가 있었다면 장면 요약 다시 생성하여 업데이트
+		if (scene.getSummary() != null && !scene.getSummary().isEmpty()) {
+			summaryService.summarizeInterval(novelRequest.getNovelId());
+		}
+
+		// -> 두번의 AI 호출됨 (비용 고려해볼것)
+		return StorySceneResponse.from(scene);
+	}
+
+	/**
+	 * Message 전달 데이터 준비 메서드
+	 * 
+	 * @param novelId
+	 * @return
+	 */
+	private NovelContext prepareContext(Long novelId) {
+		// 현재 소설 조회
+		Novel novel = findNovelById(novelId);
+
+		// 현재 소설 속 유저,메인 캐릭터 조회
+		Character userChar = characterRepository.findByNovelIdAndRole(novelId, CharacterRole.USER);
+		Character mainChar = characterRepository.findByNovelIdAndRole(novelId, CharacterRole.MAIN);
+
+		// 최근 3개 장면 조회 및 정렬
+		List<StoryScene> previousScenes = storySceneRepository.findTop3ByNovelIdOrderBySequenceOrderDesc(novelId);
+		Collections.reverse(previousScenes); // 반대로 정렬
+
+		return new NovelContext(novel, userChar, mainChar, previousScenes);
+	}
+
+	/**
+	 * AI 전달 Message 빌더
+	 * 
+	 * @param novel          : 현재 소설 객체
+	 * @param userChar       : 유저 캐릭터
+	 * @param mainChar       : 메인 캐릭터
+	 * @param previousScenes : 이전 스토리 StoryScene List
+	 * @param novelRequest   : 클라이언트 요청 객체
+	 * @return
+	 */
+	private List<Message> buildMessage(NovelContext context, String userInput) {
+		Novel novel = context.novel();
+		Character userChar = context.userChar();
+		Character mainChar = context.mainChar();
+		List<StoryScene> previousScenes = context.previousScenes();
+
+		List<Message> messages = new ArrayList<>();
 
 		try {
 			// AI 에게 전달할 메세지 List
-			List<Message> messages = new ArrayList<>();
 
 			// 파일에서 시스템 프롬프트 읽기
 			String baseSystemPrompt = StreamUtils.copyToString(aiSystemPromptResource.getInputStream(),
@@ -220,123 +433,14 @@ public class NovelServiceImpl implements NovelService {
 			}
 
 			// 현재 유저 입력 추가
-			messages.add(new UserMessage(novelRequest.getContent()));
-
-			// AI 호출
-			String jsonResponse = getAiResponse(messages);
-
-			log.debug("AI Raw Response: {}", jsonResponse);
-
-			// AI 응답 파싱
-			JsonNode rootNode = objectMapper.readTree(jsonResponse);
-			String aiOutput = rootNode.get("ai_output").asText();
-			int affinityDelta = rootNode.get("affinity_delta").asInt();
-			String reason = rootNode.get("reason").asText();
-			String keyEvent = rootNode.get("key_event").asText();
-
-			// 호감도 및 관계 등급 업데이트
-			String oldLevel = mainChar.getRelationshipLevel();
-			mainChar.updateAffinity(affinityDelta);
-			String newLevel = mainChar.getRelationshipLevel();
-
-			// 위에서 뒤집힌 List의 마지막 SequenceOrder 꺼내오기
-			int lastOrder = previousScenes.isEmpty() ? 0
-					: previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
-			// 새로운 장면(Scene) 저장
-			StoryScene newScene = StoryScene.builder().novel(novel).userInput(novelRequest.getContent())
-					.aiOutput(aiOutput).keyEvent(keyEvent).sequenceOrder(lastOrder + 1)
-					.affinityAtMoment(mainChar.getAffinity()).build();
-
-			storySceneRepository.save(newScene);
-
-			// 5장면마다 줄거리 요약
-			if (newScene.getSequenceOrder() % 5 == 0) {
-				// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
-				summaryService.summarizeInterval(novel.getId());
-			}
-
-			// 응답 DTO 반환
-			return StorySceneResponse.builder().novelId(novel.getId()).content(aiOutput)
-					.userInput(novelRequest.getContent()).affinity(mainChar.getAffinity()).affinityDelta(affinityDelta)
-					.reason(reason).relationshipLevel(newLevel).sceneId(newScene.getId())
-					.levelUp(!oldLevel.equals(newLevel)).sequenceOrder(lastOrder + 1).build();
+			messages.add(new UserMessage(userInput));
 
 		} catch (IOException e) {
 			log.error("프롬프트 파일을 읽거나 JSON을 파싱하는 중 오류 발생", e);
 			throw new RuntimeException("AI 응답 처리 실패");
 		}
-	}
 
-	/**
-	 * 해당 소설 모든 기록 불러오기
-	 *
-	 */
-	@Override
-	public List<StorySceneResponse> getScenes(Long novelId) {
-		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
-	}
-
-	/**
-	 * userId와 일치하는 소설 List 조회
-	 *
-	 */
-	@Transactional
-	@Override
-	public List<NovelResponseDTO> getMyNovelList(int userId) {
-		List<Novel> novelList = novelRepository.findNovelsByAuthorId(userId);
-
-		List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
-
-		List<NovelStats> statsList = novelStatsRepository.findStatsByNovelIds(novelIds); // 해당 소설의 통계 정보만 한번에 조회
-		Map<Long, NovelStats> statsMap = statsList.stream().collect(Collectors.toMap(NovelStats::getNovelId, s -> s));
-
-		List<Character> characters = characterRepository.findMainCharactersByNovelIds(novelIds);
-		Map<Long, Character> characterMap = characters.stream()
-				.collect(Collectors.toMap(c -> c.getNovel().getId(), 
-						c -> c, 
-						(existing, replacement) -> existing // 중복 시 기존값 유지
-				));
-
-		return novelList.stream().map(novel -> {
-			// 해당 소설의 통계 정보와 캐릭터 정보를 각각 Map에서 꺼냄
-			NovelStats stats = statsMap.get(novel.getId());
-			Character mainChar = characterMap.get(novel.getId());
-
-			// DTO의 of 메서드에 함께 전달
-			return NovelResponseDTO.of(novel, stats, mainChar);
-		}).toList();
-
-	}
-
-	/**
-	 * 마지막 장면 수정 서비스
-	 *
-	 */
-	@Transactional
-	@Override
-	public StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception {
-		// 해당 엔티티 조회
-		StoryScene scene = storySceneRepository
-				.findByNovelIdAndId(novelRequest.getNovelId(), novelRequest.getLastSceneId())
-				.orElseThrow(() -> new EntityNotFoundException("해당 장면을 찾을 수 없습니다."));
-
-		// 내용 업데이트(수정한 콘텐트)
-		scene.setAiOutput(novelRequest.getContent());
-
-		// AI 요청(key_event 생성 및 수정)
-		String changeKeyEventPrompt =  "작성된 내용 : " + novelRequest.getContent() 
-		+ "\n당신은 전문 편집자입니다. 위 내용을 2문장 이내의 keyEvent로 요약하세요.";
-		String newKeyEvent = chatModel.call(changeKeyEventPrompt);
-		scene.setKeyEvent(newKeyEvent);
-		
-		// 만약 해당 행에 summary가 있었다면 장면 요약 다시 생성하여 업데이트
-		if (scene.getSummary() != null && !scene.getSummary().isEmpty()) {
-			summaryService.summarizeInterval(novelRequest.getNovelId());
-		} 
-		
-		// -> 두번의 AI 호출됨 (비용 고려해볼것)
-		
-		return StorySceneResponse.from(scene);
+		return messages;
 	}
 
 	// User의 메시지 전달 및 AI 답변 반환받기

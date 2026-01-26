@@ -103,6 +103,17 @@ public class NovelController {
         return ResponseEntity.ok(response);
 	}
 	
+	/** 현재 장면 재생성하기(AI)
+	 * @param novelRequest
+	 * @return
+	 * @throws Exception
+	 */
+	@PostMapping("regenerate")
+	public ResponseEntity<StorySceneResponse> reGeneratedScene(@RequestBody UserNovelRequest novelRequest) throws Exception{
+		StorySceneResponse response = novelService.regenerateScene(novelRequest);
+        return ResponseEntity.ok(response);
+	}
+	
 	/** 해당 소설 모든 장면 불러오기
 	 * @param novelId
 	 * @return

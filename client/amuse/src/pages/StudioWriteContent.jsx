@@ -9,6 +9,7 @@ import { LoadingScreen } from "../components/Spinner";
 import { FormatContent } from "../components/Common";
 import { getJosa } from "../api/converter";
 import { useTypingEffect } from "../api/useTypingEffect";
+import { toast } from 'sonner';
 
 // 관계 레벨 설정
 const RELATION_CONFIG = {
@@ -82,11 +83,7 @@ export function StudioWriteContent() {
       if (s.isOptimistic) { // 낙관적 데이터는 바로 반환
         return s;
       }
-
-      // 서버 데이터(AI의 응답값) 가공
-      // 역슬래시 이스케이프 제거
       let cleanedContent = s.content || ""; // null이나 undefined 방지
-
       if (cleanedContent) {
         // 역슬래시 이스케이프 제거 및 개행 처리
         cleanedContent = cleanedContent
@@ -164,7 +161,65 @@ export function StudioWriteContent() {
       if (context?.previousScenes) {
         queryClient.setQueryData(['novel', 'scenes', novelId], context.previousScenes);
       }
-      alert(`${getJosa(mainCharacter.name, "이", "가")} 대답을 망설이고 있네요. 다시 시도해 주세요.`);
+      toast.error("다시 시도해 주세요", {
+        description: `${getJosa(mainCharacter.name, "이", "가")} 대답을 망설이고 있네요`,
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
+    }
+  });
+
+  // 마지막 신 재생성 요청
+  const { mutate: reGenerateScene, isPending: isRegenPending } = useMutation({
+    mutationFn: (payload) => novelAPI.post('/api/novel/regenerate', payload).then(res => res.data),
+    onMutate: async (reSceneRequest) => {
+      await queryClient.cancelQueries({ queryKey: ['novel', 'scenes', novelId] });
+      const previousScenes = queryClient.getQueryData(['novel', 'scenes', novelId]);
+
+      // 기존 scene중 해당 sceneId를 가진것을 로딩 중 상태로 변경
+      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
+        return old?.map(s =>
+          s.sceneId === reSceneRequest.lastSceneId
+            ? { ...s, aiOutput: "새로운 전개를 불러오는 중...", isOptimistic: true }
+            : s
+        );
+      });
+
+      return { previousScenes };
+    },
+    onSuccess: (updatedScene) => {
+      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
+        return old?.map(s => s.sceneId === updatedScene.sceneId ? updatedScene : s);
+      });
+
+      // 호감도 세팅
+      queryClient.setQueryData(['novel', novelId], (oldNovel) => {
+        if (!oldNovel) return oldNovel;
+        return {
+          ...oldNovel,
+          characters: oldNovel.characters.map(char =>
+            char.role === 'MAIN' ? { ...char, affinity: updatedScene.affinity } : char
+          )
+        };
+      });
+
+      // 레벨업 시 모달세팅
+      if (updatedScene.levelUp) {
+        document.body.classList.add('flash-effect');
+        setTimeout(() => document.body.classList.remove('flash-effect'), 500);
+        setLevelUpData({ isOpen: true, newLevel: updatedScene.relationshipLevel });
+      }
+
+      toast.success("서사가 다시 쓰여졌습니다.");
+
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousScenes) {
+        queryClient.setQueryData(['novel', 'scenes', novelId], context.previousScenes);
+      }
+      toast.error("재생성에 실패했습니다.");
     }
   });
 
@@ -179,7 +234,13 @@ export function StudioWriteContent() {
       setIsEditMode(false);
     },
     onError: (err, newScene, context) => {
-      alert('편집 오류! 다시 시도해 주세요.');
+      toast.error("편집 오류!", {
+        description: "다시 시도 해주세요~",
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
     }
   });
 
@@ -187,7 +248,17 @@ export function StudioWriteContent() {
   // 소설 못찾았을 때
   useEffect(() => {
     if (isError) {
-      alert("존재하지 않는 소설입니다.");
+      toast.error("소설 찾기 불가!", {
+        description: "이런 소설은 없는 것 같아요~",
+        duration: 3000,
+        style: {
+          background: '#1e293b', // Amuse 카드 배경색
+          color: '#F1F5F9',      // 메인 텍스트색
+          border: '1px solid #FB7185', // 로즈 포인트 테두리
+        },
+        // 아이콘 색상도 로즈색으로 변경
+        icon: <span className="text-[#FB7185]">⚠️</span>,
+      });
       navigate('/studio');
     }
   }, [isError, navigate]);
@@ -219,17 +290,84 @@ export function StudioWriteContent() {
       content: trimmedInput,
       lastSceneId: scenes[scenes.length - 1]?.sceneId, // 마지막 장면 ID (서사 연속성 유지)
     });
+    setUserInput(""); // 입력창 초기화
   };
+
+  // AI 응답(마지막 씬) 재생성 핸들러
+  const handleRegenerate = (scene) => {
+    reGenerateScene({
+      novelId: scene.novelId,
+      lastSceneId: scene.sceneId,
+    });
+  }
+
+  // 재생성 클릭 시 이벤트 핸들러
+  const handleRegenerateClick = (scene) => {
+    console.log(scene);
+    if (scene.edited) {
+      toast.error("이미 수정된 장면입니다", {
+        description: "수정된 장면은 재생성 할 수 없어요!",
+        style: {
+          background: '#4f46e5', // Amuse 카드 배경색
+          color: '#F1F5F9',      // 메인 텍스트색
+          border: '1px solid #4f46e5', // 로즈 포인트 테두리
+        },
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
+      return;
+    }
+
+    if (scene.regenerated) {
+      toast("[AI 재생성 요청]", {
+        description: "응답을 다시 생성하시겠습니까?",
+        duration: Infinity, // 신중한 결정을 위해 자동으로 닫히지 않음
+        action: {
+          label: "영혼석 -8",
+          onClick: () => {
+            // [로직 A] 영혼석 차감 API 호출 후 재생성 로직 실행
+            useSoulStoneAndRegenerate(scene.sceneId);
+          },
+        },
+        cancel: {
+          label: "취소",
+          onClick: () => console.log("결제 취소"),
+        },
+        // 유료 결제이므로 조금 더 눈에 띄는 스타일링
+        style: {
+          background: '#FB7185',
+          border: '1px solid #FB7185', // 로즈 포인트 테두리
+          color: '#F1F5F9',
+        },
+        actionButtonStyle: {
+          backgroundColor: '#4f46e5',
+          color: '#F1F5F9',
+          fontWeight: 'bold',
+        },
+      });
+      return;
+    }
+
+    // 처음 재생성하는 경우 (무료 로직)
+    handleRegenerate(scene);
+  }
 
   // 편집 내용으로 재요청 핸들러
   const handleSubmitEdit = () => {
     const trimmedInput = editInput.trim();
     if (isEditMode && trimmedInput.length === 0) {
-      alert("내용은 비어있을 수 없습니다!");
+      toast.error("편집 재요청 오류!", {
+        description: "내용은 비어있을 수 없어요~",
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
       return;
     }
 
-    console.log(scenes[scenes.length - 1]);
     editGenerateScene({
       novelId: novelData.id,
       content: trimmedInput,
@@ -240,13 +378,23 @@ export function StudioWriteContent() {
   // hanlder
   // 편집/일반 상태 변경 핸들러
   const handleEdit = (flag, scene) => {
+    if (scene.edited) {
+      toast.error("이미 수정된 장면입니다", {
+        description: "생성된 장면의 수정 기회는 1번뿐이에요!",
+        style: {
+          background: '#FB7185', // Amuse 카드 배경색
+          color: '#F1F5F9',      // 메인 텍스트색
+          border: '1px solid #FB7185', // 로즈 포인트 테두리
+        },
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
+      return;
+    }
     setIsEditMode(flag);
     setEditInput(scene.content);
-  }
-
-  // AI 콘텐트 재생성 핸들러
-  const handleRecreate = () => {
-    console.log('핸들러!')
   }
 
   // <etcFn>
@@ -325,7 +473,7 @@ export function StudioWriteContent() {
                       <button onClick={() => handleEdit(!isEditMode, scene)} className="hover:text-[#FB7185]">
                         {isEditMode ? <X /> : <SquarePen size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />}
                       </button>
-                      <button onClick={handleRecreate} className="hover:text-[#FB7185]">
+                      <button onClick={() => handleRegenerateClick(scene)} className="hover:text-[#FB7185]">
                         <RotateCcw size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />
                       </button>
                     </section>
@@ -343,6 +491,7 @@ export function StudioWriteContent() {
           <div className="max-w-3xl mx-auto">
             <EditorToolbar
               isNewScenePending={isNewScenePending}
+              isRegenPending={isRegenPending}
               isEditPending={isEditPending}
               isAutoMode={isAutoMode}
               setIsAutoMode={setIsAutoMode}
@@ -356,6 +505,7 @@ export function StudioWriteContent() {
               setUserInput={setUserInput}
               isAutoMode={isAutoMode}
               isNewScenePending={isNewScenePending}
+              isRegenPending={isRegenPending}
               isEditPending={isEditPending}
               onSend={handleSend}
             />
@@ -386,15 +536,16 @@ export function StudioWriteContent() {
 
 // 장면 렌더링 컴포넌트
 const SceneArticle = (props) => {
-  const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode, 
+  const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode,
     editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending } = props;
   const isNewLastScene = checkLastScene && checkNewScene;
   const typingText = useTypingEffect(checkNewScene ? scene.content : "", 25);
   const content = isNewLastScene ? typingText : scene.content;
-
+  
   // 상태 판별
   const isTyping = isNewLastScene && typingText.length < (scene.content?.length || 0);
   const isPendingAI = scene.isOptimistic; // 서버 응답 대기 중인 낙관적 데이터 유무 판별
+  const isRegenerating = scene.isOptimistic; // 재생성 대기 중
 
   // 사용자 입력값
   // 낙관적 데이터이거나, sequenceOrder가 0이 아닌 서버 데이터일 때
@@ -423,7 +574,7 @@ const SceneArticle = (props) => {
       )}
 
       <article className="animate-fadeIn min-h-[24px]">
-        {isPendingAI ? (
+        {isPendingAI || isRegenerating ? (
           <div className="flex items-center gap-2 text-[#FB7185] text-sm italic animate-pulse">
             <Sparkles size={16} />
             {mainCharacter.name}의 대답을 기다리는 중 입니다...
@@ -475,15 +626,9 @@ const SceneArticle = (props) => {
 
 };
 
-// 장면 수정 컴포넌트
-const EditSceneAtricle = ({ scene, checkLastScene }) => {
-
-
-}
-
 // 조건부 툴바 컴포넌트
-const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, onAddParentheses }) => {
-  const isPending = isNewScenePending || isEditPending;
+const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, onAddParentheses, isRegenPending}) => {
+  const isPending = isNewScenePending || isEditPending || isRegenPending;
 
   if (!isPending)
     return (<section className="flex items-center gap-2 mb-2">
@@ -511,8 +656,8 @@ const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setI
 });
 
 // 조건부 작성창 컴포넌트
-const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isNewScenePending, isEditPending, onSend }) => {
-  const isPending = isNewScenePending || isEditPending;
+const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isNewScenePending, isEditPending, isRegenPending, onSend }) => {
+  const isPending = isNewScenePending || isEditPending || isRegenPending;
 
   if (isPending) {
     return (

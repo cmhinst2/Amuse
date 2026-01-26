@@ -33,6 +33,13 @@ public interface NovelService {
 	 * @return
 	 */
 	StorySceneResponse generateNextScene(UserNovelRequest novelRequest) throws Exception;
+	
+	/** 현재 장면(AI) 재생성 서비스
+	 * @param sceneId
+	 * @return
+	 */
+	StorySceneResponse regenerateScene(UserNovelRequest novelRequest) throws Exception;
+
 
 	/** 해당 소설 모든 기록 불러오기
 	 * @param novelId
@@ -57,6 +64,7 @@ public interface NovelService {
 	 * @return
 	 */
 	StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception;
+
 
 
 }
