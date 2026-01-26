@@ -29,6 +29,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * 
+ */
 @RestController
 @RequestMapping("/api/novel")
 @Tag(name = "Novel Controller", description = "Novel API")
@@ -117,7 +120,18 @@ public class NovelController {
 	@GetMapping("list/{userId}")
 	public ResponseEntity<List<NovelResponseDTO>> getMyNovelList(@PathVariable("userId") int userId) {
 		List<NovelResponseDTO> novelList = novelService.getMyNovelList(userId);
-		log.debug("novelList : {}", novelList);
 		return ResponseEntity.ok(novelList);
+	}
+	
+	
+	/** 마지막 장면 수정 요청
+	 * @param novelRequest
+	 * @return
+	 * @throws Exception
+	 */
+	@PostMapping("editScene")
+	public ResponseEntity<StorySceneResponse> generateEditScene(@RequestBody UserNovelRequest novelRequest) throws Exception{
+		StorySceneResponse response = novelService.generateEditScene(novelRequest);
+        return ResponseEntity.ok(response);
 	}
 }

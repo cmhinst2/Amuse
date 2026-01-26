@@ -75,8 +75,6 @@ const NovelAuthorGuard = ({ children }) => {
     queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId
   });
-  
-  console.log(novel);
 
   if (isLoading) return <LoadingScreen text={'내 소설을 조회 중 입니다...'} />;
 

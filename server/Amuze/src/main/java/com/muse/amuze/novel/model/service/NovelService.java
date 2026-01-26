@@ -52,5 +52,11 @@ public interface NovelService {
 	 */
 	List<NovelResponseDTO> getMyNovelList(int userId);
 
+	/** 마지막 장면 수정 서비스
+	 * @param novelRequest
+	 * @return
+	 */
+	StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception;
+
 
 }

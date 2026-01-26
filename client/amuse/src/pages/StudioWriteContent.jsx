@@ -1,10 +1,10 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, m } from 'framer-motion';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import novelAPI from "../api/novelAPI";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "../components/Form";
-import { Heart, Loader2, Menu, PenLine, Sparkles, Type } from "lucide-react";
+import { Check, Heart, Loader2, Menu, PenLine, RotateCcw, Sparkles, SquarePen, Type, X } from "lucide-react";
 import { LoadingScreen } from "../components/Spinner";
 import { FormatContent } from "../components/Common";
 import { getJosa } from "../api/converter";
@@ -59,6 +59,8 @@ export function StudioWriteContent() {
   const [isAutoMode, setIsAutoMode] = useState(false); // 자동 전개 모드 상태
   const [levelUpData, setLevelUpData] = useState({ isOpen: false, newLevel: '' }); // 레벨업모달 상태값
   const [newlyCreatedSceneId, setNewlyCreatedSceneId] = useState(null); // 새로 생성된 장면 ID 상태값
+  const [isEditMode, setIsEditMode] = useState(false); // 편집 상태
+  const [editInput, setEditInput] = useState(''); // 편집 입력 상태
 
   // <Data fetch>
   // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등 (TanStack Query)
@@ -89,8 +91,9 @@ export function StudioWriteContent() {
         // 역슬래시 이스케이프 제거 및 개행 처리
         cleanedContent = cleanedContent
           .replace(/\\"/g, '"')
-          .replace(/("[^"]*")/g, '\n\n$1\n\n')
-          .replace(/\n\s*\n/g, '\n\n')
+          .replace(/\\n/g, '\n')
+          .replace(/("[^"]*")/g, ' $1 ')
+          .replace(/\n{3,}/g, '\n\n')
           .trim();
       }
 
@@ -102,8 +105,9 @@ export function StudioWriteContent() {
   const mainCharacter = useMemo(() => novelData?.characters?.find(c => c.role === 'MAIN') || { name: '캐릭터', affinity: 0 }, [novelData]);
   const relation = useMemo(() => getRelationLevel(mainCharacter.affinity), [mainCharacter.affinity]);
 
-  // <Mutaion(수정 요청처리)>
-  const { mutate: generateScene, isPending } = useMutation({
+  // <Mutaion>
+  // 새로운 신 생성 요청
+  const { mutate: generateScene, isPending: isNewScenePending } = useMutation({
     mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
     onMutate: async (newSceneRequest) => { // 서버에 요청 보내기 직전에 수행
       //cancelQueries는 비동기로 동작 : 현재 실행 중인 데이터 fetching을 강제로 멈추는 것
@@ -163,18 +167,21 @@ export function StudioWriteContent() {
       alert(`${getJosa(mainCharacter.name, "이", "가")} 대답을 망설이고 있네요. 다시 시도해 주세요.`);
     }
   });
-  /**
-   * 사용자: "전송" 클릭.
-onMutate:
-서버 데이터 가져오던 거 멈춰 (cancelQueries)
-현재 화면 데이터 백업해둬 (previousScenes)
-화면에 내가 쓴 글 일단 바로 보여줘 (setQueryData)
-서버: (전송 중...)
-결과 A (성공): onSuccess가 실행되어 서버에서 준 진짜 ID와 데이터를 화면에 덮어씌움.
-결과 B (실패): onError가 실행되어 아까 백업해둔 previousScenes로 화면을 원상복구함.
-   * 
-   * 
-   */
+
+  // 마지막 신 편집 요청
+  const { mutate: editGenerateScene, isPending: isEditPending } = useMutation({
+    mutationFn: (payload) => novelAPI.post('/api/novel/editScene', payload).then(res => res.data),
+    onSuccess: (updatedScene) => {
+      // 캐시에 저장된 데이터를 교체
+      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
+        return old.map(s => s.sceneId === updatedScene.sceneId ? updatedScene : s);
+      });
+      setIsEditMode(false);
+    },
+    onError: (err, newScene, context) => {
+      alert('편집 오류! 다시 시도해 주세요.');
+    }
+  });
 
   // <Effects>
   // 소설 못찾았을 때
@@ -198,7 +205,7 @@ onMutate:
       }, 100);
       return () => clearTimeout(timer);
     }
-  }, [scenes, isPending, isScenesLoading]); // isScenesLoading 추가!
+  }, [scenes, isNewScenePending, isScenesLoading]);
 
   // <Handlers>
   // AI에게 사용자의 내용 전달 or 자동전개 요청
@@ -210,9 +217,37 @@ onMutate:
       novelId: novelData.id,
       mode: isAutoMode ? 'AUTO' : 'USER',
       content: trimmedInput,
-      lastSceneId: scenes[scenes.length - 1]?.id, // 마지막 장면 ID (서사 연속성 유지)
+      lastSceneId: scenes[scenes.length - 1]?.sceneId, // 마지막 장면 ID (서사 연속성 유지)
     });
   };
+
+  // 편집 내용으로 재요청 핸들러
+  const handleSubmitEdit = () => {
+    const trimmedInput = editInput.trim();
+    if (isEditMode && trimmedInput.length === 0) {
+      alert("내용은 비어있을 수 없습니다!");
+      return;
+    }
+
+    console.log(scenes[scenes.length - 1]);
+    editGenerateScene({
+      novelId: novelData.id,
+      content: trimmedInput,
+      lastSceneId: scenes[scenes.length - 1]?.sceneId
+    });
+  }
+
+  // hanlder
+  // 편집/일반 상태 변경 핸들러
+  const handleEdit = (flag, scene) => {
+    setIsEditMode(flag);
+    setEditInput(scene.content);
+  }
+
+  // AI 콘텐트 재생성 핸들러
+  const handleRecreate = () => {
+    console.log('핸들러!')
+  }
 
   // <etcFn>
   // textarea 창 도우미 버튼 핸들러
@@ -220,8 +255,12 @@ onMutate:
     const textarea = textareaRef.current;
     if (!textarea) return;
     const { selectionStart: start, selectionEnd: end } = textarea;
-    const nextText = userInput.substring(0, start) + '()' + userInput.substring(end);
-    setUserInput(nextText);
+    setUserInput((prev) => {
+      // 현재 입력된 전체 텍스트(prev)에서 커서 위치를 기준으로 분할 삽입
+      const before = prev.substring(0, start);
+      const after = prev.substring(end);
+      return before + '()' + after;
+    });
     setTimeout(() => {
       textarea.focus();
       textarea.setSelectionRange(start + 1, start + 1);
@@ -248,7 +287,6 @@ onMutate:
           </div>
 
           <div className="flex items-center gap-3">
-            {/* 관계 등급 */}
             <div className="hidden sm:flex flex-col items-end px-3 border-r border-[#334155]">
               <span className="text-[10px] text-[#94A3B8] uppercase tracking-tighter">Relation</span>
               <div className="flex items-center gap-1.5">
@@ -257,7 +295,6 @@ onMutate:
               </div>
             </div>
 
-            {/* 실시간 호감도 점수 */}
             <div className="flex items-center gap-2 bg-[#0f172a]/50 px-3 py-1.5 rounded-full border border-[#334155] shadow-inner">
               <Heart size={14} className="text-[#FB7185] fill-[#FB7185]" />
               <span className="text-sm font-bold text-[#FB7185] tabular-nums">{mainCharacter.affinity}</span>
@@ -270,8 +307,29 @@ onMutate:
             {scenes.map((scene, index) => {
               const sceneKey = scene.id || scene.sceneId || `scene-${index}`;
               return (
-                <div key={sceneKey}>
-                  <SceneArticle scene={scene} shouldType={scenes.length - 1 === index && scene.sceneId === newlyCreatedSceneId} mainScrollRef={mainScrollRef} />
+                <div key={sceneKey} className="flex flex-col">
+                  <SceneArticle
+                    scene={scene}
+                    mainCharacter={mainCharacter}
+                    checkLastScene={scenes.length - 1 === index}
+                    checkNewScene={scene.sceneId === newlyCreatedSceneId}
+                    isEditMode={isEditMode}
+                    editInput={editInput}
+                    setEditInput={setEditInput}
+                    mainScrollRef={mainScrollRef}
+                    handleSubmitEdit={handleSubmitEdit}
+                    isEditPending={isEditPending}
+                  />
+                  {scenes.length - 1 === index &&
+                    <section className="self-end flex gap-3">
+                      <button onClick={() => handleEdit(!isEditMode, scene)} className="hover:text-[#FB7185]">
+                        {isEditMode ? <X /> : <SquarePen size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />}
+                      </button>
+                      <button onClick={handleRecreate} className="hover:text-[#FB7185]">
+                        <RotateCcw size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />
+                      </button>
+                    </section>
+                  }
                 </div>
               )
             }
@@ -284,7 +342,8 @@ onMutate:
         <footer className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-[#0f172a] via-[#0f172a] to-transparent">
           <div className="max-w-3xl mx-auto">
             <EditorToolbar
-              isPending={isPending}
+              isNewScenePending={isNewScenePending}
+              isEditPending={isEditPending}
               isAutoMode={isAutoMode}
               setIsAutoMode={setIsAutoMode}
               onAddParentheses={handleAddParentheses}
@@ -296,7 +355,8 @@ onMutate:
               userInput={userInput}
               setUserInput={setUserInput}
               isAutoMode={isAutoMode}
-              isPending={isPending}
+              isNewScenePending={isNewScenePending}
+              isEditPending={isEditPending}
               onSend={handleSend}
             />
             <div className="flex items-center justify-center gap-1.5 mt-3 opacity-60">
@@ -325,13 +385,15 @@ onMutate:
 }
 
 // 장면 렌더링 컴포넌트
-const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
-  // shouldType이 true일 때만 타이핑 훅을 실행하고, 아니면 원본 그대로 노출
-  const typingText = useTypingEffect(shouldType ? scene.content : "", 25);
-  const content = shouldType ? typingText : scene.content;
+const SceneArticle = (props) => {
+  const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode, 
+    editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending } = props;
+  const isNewLastScene = checkLastScene && checkNewScene;
+  const typingText = useTypingEffect(checkNewScene ? scene.content : "", 25);
+  const content = isNewLastScene ? typingText : scene.content;
 
   // 상태 판별
-  const isTyping = shouldType && typingText.length < (scene.content?.length || 0);
+  const isTyping = isNewLastScene && typingText.length < (scene.content?.length || 0);
   const isPendingAI = scene.isOptimistic; // 서버 응답 대기 중인 낙관적 데이터 유무 판별
 
   // 사용자 입력값
@@ -348,44 +410,81 @@ const SceneArticle = ({ scene, shouldType, mainScrollRef }) => {
     }
   }, [typingText, isTyping, isPendingAI, mainScrollRef]);
 
+
   return (
-    <div key={scene.id} className="mb-10">
-      {/* 사용자 입력 영역: 낙관적 상태일 때도 즉시 나타남 */}
+    <div key={scene.id} className="mb-5">
       {hasUserInput && (
         <article className={`bg-[#1e293b] rounded-xl p-4 mb-6 border border-[#334155] transition-all
-          ${isPendingAI ? 'opacity-70 border-[#FB7185]/40 ring-1 ring-[#FB7185]/20 shadow-[0_0_15px_rgba(251,113,133,0.1)]' : ''}`}>
+            ${isPendingAI ? 'opacity-70 border-[#FB7185]/40 ring-1 ring-[#FB7185]/20 shadow-[0_0_15px_rgba(251,113,133,0.1)]' : ''}`}>
           <p className="text-base leading-[1.8] text-[#94A3B8] whitespace-pre-wrap tracking-wide">
             {scene.userInput}
           </p>
         </article>
       )}
 
-      {/* AI 응답 영역 */}
       <article className="animate-fadeIn min-h-[24px]">
         {isPendingAI ? (
-          /* 낙관적 UI: AI가 생각 중일 때 보여줄 로딩 표시 */
           <div className="flex items-center gap-2 text-[#FB7185] text-sm italic animate-pulse">
             <Sparkles size={16} />
-            AI가 장면을 구상 중입니다...
+            {mainCharacter.name}의 대답을 기다리는 중 입니다...
           </div>
         ) : (
-          /* 실제 서버 데이터 노출 */
           <>
-            <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
-              <FormatContent text={content} />
-              {isTyping && (
-                <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
-              )}
-            </p>
+            {/* 수정모드 이면서 마지막 장면 일 때  */}
+            {isEditMode && checkLastScene ?
+              <div className="flex flex-col w-full group">
+                <textarea
+                  disabled={isEditPending}
+                  value={editInput}
+                  onChange={(e) => setEditInput(e.target.value)}
+                  className="w-full min-h-[200px] p-4 bg-[#1e293b] text-[#F1F5F9] text-base leading-[1.8] tracking-wide rounded-xl border border-[#334155] 
+                 outline-none transition-all duration-300 placeholder:text-[#94A3B8]/50 focus:border-[#FB7185]/50 focus:ring-2 focus:ring-[#FB7185]/10 scrollbar-thin scrollbar-thumb-[#334155] scrollbar-track-transparent resize-none"
+                  placeholder="AI가 생성한 내용을 편집합니다."
+                />
+                <button
+                  onClick={handleSubmitEdit}
+                  disabled={isEditPending} // 로딩 중 클릭 방지
+                  className="flex w-full bg-[#FB7185] text-[#F1F5F9] h-[50px] mt-3 rounded-lg justify-center items-center transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
+                >
+                  {isEditPending ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="animate-spin" size={20} />
+                      <span className="text-sm font-medium">편집 중...</span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">확인</p>
+                      <Check size={20} />
+                    </div>
+                  )}
+                </button>
+              </div>
+              :
+              <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
+                <FormatContent text={content} />
+                {isTyping && (
+                  <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
+                )}
+              </p>
+            }
           </>
         )}
       </article>
     </div>
   );
+
 };
 
+// 장면 수정 컴포넌트
+const EditSceneAtricle = ({ scene, checkLastScene }) => {
+
+
+}
+
 // 조건부 툴바 컴포넌트
-const EditorToolbar = memo(({ isPending, isAutoMode, setIsAutoMode, onAddParentheses }) => {
+const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, onAddParentheses }) => {
+  const isPending = isNewScenePending || isEditPending;
+
   if (!isPending)
     return (<section className="flex items-center gap-2 mb-2">
       {!isAutoMode && (
@@ -412,7 +511,9 @@ const EditorToolbar = memo(({ isPending, isAutoMode, setIsAutoMode, onAddParenth
 });
 
 // 조건부 작성창 컴포넌트
-const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isPending, onSend }) => {
+const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isNewScenePending, isEditPending, onSend }) => {
+  const isPending = isNewScenePending || isEditPending;
+
   if (isPending) {
     return (
       <div className="flex p-4 bg-slate-900/50 rounded-lg border border-rose-500/30 animate-pulse">

@@ -4,7 +4,7 @@
 */
 export const FormatContent = ({text}) => {
   if (!text) return "";
-
+  
   // 큰따옴표로 감싸진 대사 부분을 찾는 정규표현식
   const parts = text.split(/("[^"]*")/g);
 

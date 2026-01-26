@@ -100,14 +100,12 @@ public class NovelServiceImpl implements NovelService {
 
 		// 캐릭터 설정 정보 요약
 		// AI 컨텍스트용으로 쓰기 위해 캐릭터 리스트를 하나의 텍스트로 합침
-		String combinedSettings = request.getCharacters()
-				.stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
+		String combinedSettings = request.getCharacters().stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
 				c.getName(), c.getRole(), c.getGender(), c.getPersonality(), c.getAppearance()))
 				.collect(Collectors.joining("\n"));
 
 		// 소설 기본 뼈대 저장
-		Novel novel = Novel.builder()
-				.author(user) // 작가정보
+		Novel novel = Novel.builder().author(user) // 작가정보
 				.title(request.getTitle()) // 제목
 				.description(request.getDescription()) // 짧은소개글
 				.tags(request.getTags()) // 태그
@@ -123,11 +121,8 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 개별 엔티티 저장
 		if (request.getCharacters() != null && !request.getCharacters().isEmpty()) {
 			List<Character> characterEntities = request.getCharacters().stream()
-					.map(charDto -> Character.builder()
-							.novel(savedNovel)
-							.name(charDto.getName())
-							.role(charDto.getRole())
-							.personality(charDto.getPersonality())
+					.map(charDto -> Character.builder().novel(savedNovel).name(charDto.getName())
+							.role(charDto.getRole()).personality(charDto.getPersonality())
 							.appearance(charDto.getAppearance()).gender(charDto.getGender()).affinity(0) // 초기 호감도 0
 							.relationshipLevel("ACQUAINTANCE") // 초기 관계 '지인'
 							.build())
@@ -200,11 +195,13 @@ public class NovelServiceImpl implements NovelService {
 						: "이제 막 이야기가 시작되는 단계입니다. 등장인물의 설정에 집중하여 서사를 시작하세요.";
 				fullSystemPrompt.append("\n(초기 서사 단계): ").append(initialContext);
 			}
-			
+
 			fullSystemPrompt.append("\n\n[등장인물 설정 및 페르소나]\n").append(novel.getCharacterSettings());
 			fullSystemPrompt.append("\n\n[현재 세션 캐릭터 성별 정보]");
-			fullSystemPrompt.append("\n- ").append(userChar.getName()).append(": ").append("M".equals(userChar.getGender()) ? "남성" : "여성");
-			fullSystemPrompt.append("\n- ").append(mainChar.getName()).append(": ").append("M".equals(mainChar.getGender()) ? "남성" : "여성");
+			fullSystemPrompt.append("\n- ").append(userChar.getName()).append(": ")
+					.append("M".equals(userChar.getGender()) ? "남성" : "여성");
+			fullSystemPrompt.append("\n- ").append(mainChar.getName()).append(": ")
+					.append("M".equals(mainChar.getGender()) ? "남성" : "여성");
 			fullSystemPrompt.append("\n\n### [현재 관계 상태]");
 			fullSystemPrompt.append("\n- 관계 등급: ").append(mainChar.getRelationshipLevel());
 			fullSystemPrompt.append("\n- 현재 호감도 점수: ").append(mainChar.getAffinity()).append("점");
@@ -216,11 +213,10 @@ public class NovelServiceImpl implements NovelService {
 				messages.add(new UserMessage(scene.getUserInput()));
 				// AI가 이전 응답 맥락을 기억하도록 수정: DB에 본문만 저장되어있어 응답 포맷(JSON)을 기억못하는 이슈 발생
 				String fakeJsonResponse = String.format(
-			        "{\"ai_output\": \"%s\", \"affinity_delta\": 0, \"reason\": \"이전 대화\", \"key_event\": \"%s\"}",
-			        scene.getAiOutput().replace("\"", "\\\"").replace("\n", "\\n"),
-			        scene.getKeyEvent() != null ? scene.getKeyEvent().replace("\"", "\\\"") : "사건 요약"
-			    );
-			    messages.add(new AssistantMessage(fakeJsonResponse));
+						"{\"ai_output\": \"%s\", \"affinity_delta\": 0, \"reason\": \"이전 대화\", \"key_event\": \"%s\"}",
+						scene.getAiOutput().replace("\"", "\\\"").replace("\n", "\\n"),
+						scene.getKeyEvent() != null ? scene.getKeyEvent().replace("\"", "\\\"") : "사건 요약");
+				messages.add(new AssistantMessage(fakeJsonResponse));
 			}
 
 			// 현재 유저 입력 추가
@@ -247,36 +243,23 @@ public class NovelServiceImpl implements NovelService {
 			int lastOrder = previousScenes.isEmpty() ? 0
 					: previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
 			// 새로운 장면(Scene) 저장
-			StoryScene newScene = StoryScene.builder()
-					.novel(novel)
-					.userInput(novelRequest.getContent())
-					.aiOutput(aiOutput)
-					.keyEvent(keyEvent)
-					.sequenceOrder(lastOrder + 1)
-					.affinityAtMoment(mainChar.getAffinity())
-					.build();
+			StoryScene newScene = StoryScene.builder().novel(novel).userInput(novelRequest.getContent())
+					.aiOutput(aiOutput).keyEvent(keyEvent).sequenceOrder(lastOrder + 1)
+					.affinityAtMoment(mainChar.getAffinity()).build();
 
 			storySceneRepository.save(newScene);
 
 			// 5장면마다 줄거리 요약
 			if (newScene.getSequenceOrder() % 5 == 0) {
 				// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
-				summaryService.updateTotalSummaryAsync(novel.getId());
+				summaryService.summarizeInterval(novel.getId());
 			}
 
 			// 응답 DTO 반환
-			return StorySceneResponse.builder()
-					.novelId(novel.getId())
-					.content(aiOutput)
-					.userInput(novelRequest.getContent())
-					.affinity(mainChar.getAffinity())
-					.affinityDelta(affinityDelta)
-					.reason(reason)
-					.relationshipLevel(newLevel)
-					.sceneId(newScene.getId())
-					.levelUp(!oldLevel.equals(newLevel))
-					.sequenceOrder(lastOrder + 1)
-					.build();
+			return StorySceneResponse.builder().novelId(novel.getId()).content(aiOutput)
+					.userInput(novelRequest.getContent()).affinity(mainChar.getAffinity()).affinityDelta(affinityDelta)
+					.reason(reason).relationshipLevel(newLevel).sceneId(newScene.getId())
+					.levelUp(!oldLevel.equals(newLevel)).sequenceOrder(lastOrder + 1).build();
 
 		} catch (IOException e) {
 			log.error("프롬프트 파일을 읽거나 JSON을 파싱하는 중 오류 발생", e);
@@ -290,51 +273,75 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Override
 	public List<StorySceneResponse> getScenes(Long novelId) {
-		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId)
-				.stream()
-				.map(StorySceneResponse::from)
-				.toList();
+		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
 	}
-	
-	
-	/** userId와 일치하는 소설 List 조회
+
+	/**
+	 * userId와 일치하는 소설 List 조회
 	 *
 	 */
 	@Transactional
 	@Override
 	public List<NovelResponseDTO> getMyNovelList(int userId) {
-	    List<Novel> novelList = novelRepository.findNovelsByAuthorId(userId);
-	    
-	    List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
-	    
-	    List<NovelStats> statsList = novelStatsRepository.findStatsByNovelIds(novelIds); // 해당 소설의 통계 정보만 한번에 조회
-	    Map<Long, NovelStats> statsMap = statsList.stream()
-	    		.collect(Collectors.toMap(NovelStats::getNovelId, s -> s));
-	    
-	    List<Character> characters = characterRepository.findMainCharactersByNovelIds(novelIds);
-	    Map<Long, Character> characterMap = characters.stream()
-	            .collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c,
-	                (existing, replacement) -> existing // 중복 시 기존값 유지
-	            ));
+		List<Novel> novelList = novelRepository.findNovelsByAuthorId(userId);
 
-	    return novelList.stream()
-	    		.map(novel -> {
-	                // 해당 소설의 통계 정보와 캐릭터 정보를 각각 Map에서 꺼냄
-	                NovelStats stats = statsMap.get(novel.getId());
-	                Character mainChar = characterMap.get(novel.getId());
-	                
-	                // DTO의 of 메서드에 함께 전달
-	                return NovelResponseDTO.of(novel, stats, mainChar);
-	            })
-	            .toList();
+		List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
+
+		List<NovelStats> statsList = novelStatsRepository.findStatsByNovelIds(novelIds); // 해당 소설의 통계 정보만 한번에 조회
+		Map<Long, NovelStats> statsMap = statsList.stream().collect(Collectors.toMap(NovelStats::getNovelId, s -> s));
+
+		List<Character> characters = characterRepository.findMainCharactersByNovelIds(novelIds);
+		Map<Long, Character> characterMap = characters.stream()
+				.collect(Collectors.toMap(c -> c.getNovel().getId(), 
+						c -> c, 
+						(existing, replacement) -> existing // 중복 시 기존값 유지
+				));
+
+		return novelList.stream().map(novel -> {
+			// 해당 소설의 통계 정보와 캐릭터 정보를 각각 Map에서 꺼냄
+			NovelStats stats = statsMap.get(novel.getId());
+			Character mainChar = characterMap.get(novel.getId());
+
+			// DTO의 of 메서드에 함께 전달
+			return NovelResponseDTO.of(novel, stats, mainChar);
+		}).toList();
+
+	}
+
+	/**
+	 * 마지막 장면 수정 서비스
+	 *
+	 */
+	@Transactional
+	@Override
+	public StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception {
+		// 해당 엔티티 조회
+		StoryScene scene = storySceneRepository
+				.findByNovelIdAndId(novelRequest.getNovelId(), novelRequest.getLastSceneId())
+				.orElseThrow(() -> new EntityNotFoundException("해당 장면을 찾을 수 없습니다."));
+
+		// 내용 업데이트(수정한 콘텐트)
+		scene.setAiOutput(novelRequest.getContent());
+
+		// AI 요청(key_event 생성 및 수정)
+		String changeKeyEventPrompt =  "작성된 내용 : " + novelRequest.getContent() 
+		+ "\n당신은 전문 편집자입니다. 위 내용을 2문장 이내의 keyEvent로 요약하세요.";
+		String newKeyEvent = chatModel.call(changeKeyEventPrompt);
+		scene.setKeyEvent(newKeyEvent);
 		
+		// 만약 해당 행에 summary가 있었다면 장면 요약 다시 생성하여 업데이트
+		if (scene.getSummary() != null && !scene.getSummary().isEmpty()) {
+			summaryService.summarizeInterval(novelRequest.getNovelId());
+		} 
+		
+		// -> 두번의 AI 호출됨 (비용 고려해볼것)
+		
+		return StorySceneResponse.from(scene);
 	}
 
 	// User의 메시지 전달 및 AI 답변 반환받기
 	private String getAiResponse(List<Message> messages) {
-	    OpenAiChatOptions options = OpenAiChatOptions.builder()
-	            .temperature(0.8)
-	            .build();
+		OpenAiChatOptions options = OpenAiChatOptions.builder().temperature(0.8).build();
 
 		Prompt prompt = new Prompt(messages, options);
 

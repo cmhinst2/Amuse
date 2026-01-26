@@ -39,9 +39,12 @@ public class SummaryServiceImpl implements SummaryService {
 	@Value("classpath:prompts/gpt-system-prompt.txt")
 	private Resource summaryPromptResource;
 
+	/** 최근 다섯개 씬의 내용 줄거리 요약
+	 * keyEvents 기반으로 요약
+	 */
 	@Async
 	@Transactional
-	public void updateTotalSummaryAsync(Long novelId) throws IOException {
+	public void summarizeInterval(Long novelId) throws IOException {
 		// 모든 Key Events 조회
 		List<String> keyEvents = storySceneRepository.findAllKeyEventsByNovelId(novelId);
 
@@ -52,17 +55,15 @@ public class SummaryServiceImpl implements SummaryService {
 		log.info("추출된 이벤트: " + combinedEvents);
 		String newSummary = requestSummary(combinedEvents);
 
-		// 마스터 줄거리 업데이트 (Novel 테이블)
+		// 마스터 줄거리 업데이트 (novel 테이블 total_summary)
         Novel novel = novelRepository.findById(novelId)
                 .orElseThrow(() -> new RuntimeException("소설을 찾을 수 없습니다."));
         novel.setTotalSummary(newSummary);
-        // novelRepository.save(novel); // Dirty Checking이 작동하지만, 명시적으로 써줘도 무방
 
-        // 가장 최신 장면 하나에 스냅샷 저장
+        // 가장 최신 장면 하나에 스냅샷 저장(story_scene 테이블 summary)
         StoryScene latestScene = storySceneRepository.findTopByNovelIdOrderByIdDesc(novelId);
         if (latestScene != null) {
             latestScene.setSummary(newSummary);
-            // storySceneRepository.save(latestScene);
         }
         
         log.info("=== 비동기 요약 완료 (Novel ID: " + novelId + ") ===");
