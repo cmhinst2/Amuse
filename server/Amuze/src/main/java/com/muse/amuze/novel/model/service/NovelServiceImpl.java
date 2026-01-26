@@ -333,6 +333,8 @@ public class NovelServiceImpl implements NovelService {
 
 		// 내용 업데이트(수정한 콘텐트)
 		scene.setAiOutput(novelRequest.getContent());
+		scene.setEdited(true);
+		scene.setRegenerated(true);
 
 		// AI 요청(key_event 생성 및 수정)
 		String changeKeyEventPrompt = "작성된 내용 : " + novelRequest.getContent()
@@ -344,9 +346,11 @@ public class NovelServiceImpl implements NovelService {
 		if (scene.getSummary() != null && !scene.getSummary().isEmpty()) {
 			summaryService.summarizeInterval(novelRequest.getNovelId());
 		}
+		
+		Character mainChar = characterRepository.findByNovelIdAndRole(novelRequest.getNovelId(), CharacterRole.MAIN);
 
 		// -> 두번의 AI 호출됨 (비용 고려해볼것)
-		return StorySceneResponse.from(scene);
+		return StorySceneResponse.of(scene, 0, "직접 수정됨", mainChar, false);
 	}
 
 	/**
