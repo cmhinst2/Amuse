@@ -303,7 +303,7 @@ export function StudioWriteContent() {
 
   // 재생성 클릭 시 이벤트 핸들러
   const handleRegenerateClick = (scene) => {
-    console.log(scene);
+
     if (scene.edited) {
       toast.error("이미 수정된 장면입니다", {
         description: "수정된 장면은 재생성 할 수 없어요!",
@@ -378,6 +378,22 @@ export function StudioWriteContent() {
   // hanlder
   // 편집/일반 상태 변경 핸들러
   const handleEdit = (flag, scene) => {
+    if (scene.regenerated) {
+      toast.error("재생성 된 장면입니다", {
+        description: "재생성된 장면은 수정할 수 없어요!",
+        style: {
+          background: '#FB7185', // Amuse 카드 배경색
+          color: '#F1F5F9',      // 메인 텍스트색
+          border: '1px solid #FB7185', // 로즈 포인트 테두리
+        },
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
+      return;
+    }
+
     if (scene.edited) {
       toast.error("이미 수정된 장면입니다", {
         description: "생성된 장면의 수정 기회는 1번뿐이에요!",
@@ -393,6 +409,7 @@ export function StudioWriteContent() {
       });
       return;
     }
+    
     setIsEditMode(flag);
     setEditInput(scene.content);
   }
@@ -541,7 +558,7 @@ const SceneArticle = (props) => {
   const isNewLastScene = checkLastScene && checkNewScene;
   const typingText = useTypingEffect(checkNewScene ? scene.content : "", 25);
   const content = isNewLastScene ? typingText : scene.content;
-  
+
   // 상태 판별
   const isTyping = isNewLastScene && typingText.length < (scene.content?.length || 0);
   const isPendingAI = scene.isOptimistic; // 서버 응답 대기 중인 낙관적 데이터 유무 판별
@@ -627,7 +644,7 @@ const SceneArticle = (props) => {
 };
 
 // 조건부 툴바 컴포넌트
-const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, onAddParentheses, isRegenPending}) => {
+const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, onAddParentheses, isRegenPending }) => {
   const isPending = isNewScenePending || isEditPending || isRegenPending;
 
   if (!isPending)
