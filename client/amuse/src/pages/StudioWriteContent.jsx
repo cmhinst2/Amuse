@@ -106,16 +106,32 @@ export function StudioWriteContent() {
   // 새로운 신 생성 요청
   const { mutate: generateScene, isPending: isNewScenePending } = useMutation({
     mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
+    retry: (failureCount, error) => { // 서버에서 에러 발생 시 최대 2번까지 자동으로 다시 시도 
+      if (error.response?.status === 500) return false; // 서버 3번 시도에도 500이라면 포기
+      if (failureCount < 2) return true; // 네트워크이상, 서버응답 못하는상태 리트라이
+      return false;
+    },
+    retryDelay: 1000, // 1초 뒤에 시도
     onMutate: async (newSceneRequest) => { // 서버에 요청 보내기 직전에 수행
       //cancelQueries는 비동기로 동작 : 현재 실행 중인 데이터 fetching을 강제로 멈추는 것
       // 수동으로 화면 바꿀 거니까, 서버에서 가져오던 건 일단 다 취소
       await queryClient.cancelQueries({ queryKey: ['novel', 'scenes', novelId] });
       const previousScenes = queryClient.getQueryData(['novel', 'scenes', novelId]); // 기존 데이터 스냅샷 저장 (에러 발생 시 복구용)
+
+      // UI 표시 텍스트
+      let displayInput = newSceneRequest.content;
+
+      if (!newSceneRequest.content || newSceneRequest.content.trim() === "") { // 입력이 아예 없거나 공백인 경우
+        displayInput = "자동 전개 모드(AUTO) : 사용자 입력이 없습니다.";
+      } else if (newSceneRequest.mode === 'AUTO') { // 입력은 있는데 모드가 AUTO인 경우 (가이드형 자동 전개)
+        displayInput = `자동 전개 모드(AUTO) : ${newSceneRequest.content}`;
+      }
+
       queryClient.setQueryData(['novel', 'scenes', novelId], (old) => [ // 임시 저장 데이터를 리스트에 바로 저장
         ...(old || []),
         {
           id: Date.now(), // 임시 ID
-          userInput: newSceneRequest.content || "(자동 전개 중...)",
+          userInput: displayInput,
           aiOutput: "", // AI 응답 대기 상태
           isOptimistic: true, // UI에서 로딩 스피너 등을 보여주기 위한 플래그
           sequenceOrder: (old?.length || 0) + 1 // 순서 임시 부여
@@ -409,12 +425,11 @@ export function StudioWriteContent() {
       });
       return;
     }
-    
+
     setIsEditMode(flag);
     setEditInput(scene.content);
   }
 
-  // <etcFn>
   // textarea 창 도우미 버튼 핸들러
   const handleAddParentheses = useCallback(() => {
     const textarea = textareaRef.current;

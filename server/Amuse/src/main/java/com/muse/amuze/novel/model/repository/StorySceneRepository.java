@@ -3,6 +3,7 @@ package com.muse.amuze.novel.model.repository;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -16,8 +17,8 @@ public interface StorySceneRepository extends JpaRepository<StoryScene, Long>{
 
 	Optional<StoryScene> findFirstByNovelIdOrderBySequenceOrderDesc(Long novelId);
 	
-	List<StoryScene> findTop3ByNovelIdOrderBySequenceOrderDesc(Long id);
-
+	List<StoryScene> findByNovelIdOrderBySequenceOrderDesc(Long novelId, PageRequest of);
+	
 	StoryScene findTopByNovelIdOrderByIdDesc(Long novelId);
 	
 	List<StoryScene> findByNovelIdOrderByIdAsc(Long novelId);
@@ -32,6 +33,9 @@ public interface StorySceneRepository extends JpaRepository<StoryScene, Long>{
 									    @Param("content") String content);
 
 	Optional<StoryScene> findByNovelIdAndId(Long novelId, Long lastSceneId);
+
+	
+
 
 
 

@@ -32,7 +32,7 @@ public interface NovelService {
 	 * @param novelRequest
 	 * @return
 	 */
-	StorySceneResponse generateNextScene(UserNovelRequest novelRequest) throws Exception;
+	StorySceneResponse generateNextScene(UserNovelRequest novelRequest);
 	
 	/** 현재 장면(AI) 재생성 서비스
 	 * @param sceneId

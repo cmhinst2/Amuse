@@ -98,7 +98,7 @@ public class NovelController {
 	 * @return
 	 */
 	@PostMapping("generate")
-	public ResponseEntity<StorySceneResponse> generateNextScene(@RequestBody UserNovelRequest novelRequest) throws Exception{
+	public ResponseEntity<StorySceneResponse> generateNextScene(@RequestBody UserNovelRequest novelRequest) {
 		StorySceneResponse response = novelService.generateNextScene(novelRequest);
         return ResponseEntity.ok(response);
 	}

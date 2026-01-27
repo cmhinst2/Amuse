@@ -34,6 +34,10 @@ Gender & Pronoun (Critical):
 현재 관계: {{relationLevel}} (호감도 {{affinityScore}}점)
 주인공(USER): {{userName}} / 메인 캐릭터(MAIN): {{mainCharName}}
 
+# AUTO Mode Specific Instruction
+- 이전 5개의 'key_event' 흐름을 분석하여, {{mainCharName}}이(가) 주도적으로 사건을 일으키거나 감정적 변화를 겪는 장면을 창조하십시오.
+- 서사가 정체되지 않도록 새로운 갈등이나 흥미로운 상황을 적극적으로 도입하십시오.
+
 # Output Instructions (Strict)
 출력은 반드시 아래 형식을 지킨 유효한(valid) 단일 JSON 객체여야 합니다. 
 서문, 설명, 인사말, Markdown 코드 블록(```json)을 절대 포함하지 마십시오. '{'로 시작해서 '}'로 끝나는 순수 JSON 데이터만 출력하십시오.

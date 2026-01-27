@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -19,6 +20,7 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -160,7 +162,7 @@ public class NovelServiceImpl implements NovelService {
 	}
 
 	/**
-	 * 새로운(다음)장면 생성 (AI) 서비스
+	 * 새로운(다음)장면 생성 (AI) 서비스 + 자동 전개모드 (AUTO)에 따른 로직 처리
 	 * 
 	 * @param novelRequest
 	 * @return
@@ -168,57 +170,93 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Transactional
 	@Override
-	public StorySceneResponse generateNextScene(UserNovelRequest novelRequest) throws Exception {
-		// AI 전달용 message 데이터 준비(novel, userChar, mainChar, previousScenes)
-		NovelContext ctx = prepareContext(novelRequest.getNovelId());
+	public StorySceneResponse generateNextScene(UserNovelRequest novelRequest) {
 
-		// AI 전달 message bulider로 생성
-		List<Message> messages = buildMessage(ctx, novelRequest.getContent());
+		boolean mode = false;
+		if (novelRequest.getMode().equals("AUTO"))
+			mode = true; // 자동 전개 모드
 
-		// AI 호출
-		String jsonResponse = getAiResponse(messages);
+		int maxRetries = 2; // 최대 2번 더 시도 (총 3번)
+		int attempt = 0;
 
-		log.debug("AI Raw Response: {}", jsonResponse);
+		while (attempt <= maxRetries) {
+			try {
 
-		// AI 응답 파싱
-		JsonNode rootNode = objectMapper.readTree(jsonResponse);
-		String aiOutput = rootNode.get("ai_output").asText();
-		int affinityDelta = rootNode.get("affinity_delta").asInt();
-		String reason = rootNode.get("reason").asText();
-		String keyEvent = rootNode.get("key_event").asText();
+				// AI 전달용 message 데이터 준비(novel, userChar, mainChar, previousScenes)
+				NovelContext ctx = prepareContext(novelRequest.getNovelId(), mode);
 
-		// NovelContext에서 필요한 값 추출
-		Novel novel = ctx.novel();
-		Character mainChar = ctx.mainChar();
-		List<StoryScene> previousScenes = ctx.previousScenes();
+				// AI 전달 message bulider로 생성
+				List<Message> messages = buildMessage(ctx, novelRequest.getContent(), mode);
 
-		// 호감도 및 관계 등급 업데이트
-		String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
-		mainChar.updateAffinity(affinityDelta); // 호감도 업뎃 후
-		String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
+				// AI 호출
+				String jsonResponse = getAiResponse(messages);
 
-		// 위에서 뒤집힌 List의 마지막 SequenceOrder 꺼내오기
-		int lastOrder = previousScenes.isEmpty() ? 0 : previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
-		// 새로운 장면(Scene) 저장
-		StoryScene newScene = StoryScene.builder()
-				.novel(novel)
-				.userInput(novelRequest.getContent())
-				.aiOutput(aiOutput)
-				.keyEvent(keyEvent)
-				.sequenceOrder(lastOrder + 1)
-				.affinityAtMoment(mainChar.getAffinity())
-				.build();
+				log.debug("AI 응답: {}", jsonResponse);
 
-		storySceneRepository.save(newScene);
+				// AI 응답 파싱
+				JsonNode rootNode = objectMapper.readTree(jsonResponse);
+				String aiOutput = rootNode.path("ai_output").asText("");
+				int affinityDelta = rootNode.path("affinity_delta").asInt(0);
+				String reason = rootNode.path("reason").asText("");
+				String keyEvent = rootNode.path("key_event").asText("");
 
-		// 5장면마다 줄거리 요약
-		if (newScene.getSequenceOrder() % 5 == 0) {
-			// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
-			summaryService.summarizeInterval(novel.getId());
+				if (aiOutput.isBlank() || reason.isBlank() || keyEvent.isBlank()) {
+					throw new RuntimeException("AI 응답 필수 필드 누락");
+				}
+
+				// NovelContext에서 필요한 값 추출
+				Novel novel = ctx.novel();
+				Character mainChar = ctx.mainChar();
+				List<StoryScene> previousScenes = ctx.previousScenes();
+
+				// 호감도 및 관계 등급 업데이트
+				String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
+				mainChar.updateAffinity(affinityDelta); // 호감도 업뎃 후
+				String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
+
+				String finalUserInput = null;
+				if (novelRequest.getContent() == null || novelRequest.getContent().isBlank()) {
+					finalUserInput = "자동 전개 모드(AUTO) : 사용자 입력이 없습니다.";
+				} else if (mode) {
+					finalUserInput = "자동 전개 모드(AUTO) : " + novelRequest.getContent();
+				} else {
+					finalUserInput = novelRequest.getContent();
+				}
+
+				// 위에서 뒤집힌 List의 마지막 SequenceOrder 꺼내오기
+				int lastOrder = previousScenes.isEmpty() ? 0
+						: previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
+				// 새로운 장면(Scene) 저장
+				StoryScene newScene = StoryScene.builder().novel(novel).userInput(finalUserInput).aiOutput(aiOutput)
+						.keyEvent(keyEvent).sequenceOrder(lastOrder + 1).affinityAtMoment(mainChar.getAffinity())
+						.build();
+
+				storySceneRepository.save(newScene);
+
+				// 5장면마다 줄거리 요약
+				if (newScene.getSequenceOrder() % 5 == 0) {
+					// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
+					summaryService.summarizeInterval(novel.getId());
+				}
+
+				// 응답 DTO 반환
+				return StorySceneResponse.of(newScene, affinityDelta, reason, mainChar, !oldLevel.equals(newLevel));
+
+			} catch (Exception e) {
+				attempt++;
+	            log.warn("AI 응답 생성 실패 (시도 {}/{}): {}", attempt, maxRetries + 1, e.getMessage());
+	            
+	            if (attempt > maxRetries) {
+	                log.error("최대 재시도 횟수를 초과했습니다.");
+	                throw new RuntimeException("AI 작가가 현재 원고 작성을 거부하고 있습니다. 잠시 후 다시 시도해 주세요.");
+	            }
+	            
+	            // 네트워크나 api의 일시적 오류를 대비하여 재시도 전 짧게 대기 후 수행
+	            try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+			}
 		}
-
-		// 응답 DTO 반환
-		return StorySceneResponse.of(newScene, affinityDelta, reason, mainChar, !oldLevel.equals(newLevel));
+		
+		throw new RuntimeException("예기치 못한 시스템 오류가 발생했습니다.");
 	}
 
 	/**
@@ -226,8 +264,8 @@ public class NovelServiceImpl implements NovelService {
 	 * 
 	 * @param sceneId
 	 * @return
-	 * @throws JsonProcessingException 
-	 * @throws JsonMappingException 
+	 * @throws JsonProcessingException
+	 * @throws JsonMappingException
 	 */
 	@Transactional
 	@Override
@@ -241,7 +279,7 @@ public class NovelServiceImpl implements NovelService {
 			throw new IllegalStateException("이미 재생성된 장면입니다.");
 
 		// AI 전달용 message 데이터 준비(novel, userChar, mainChar, previousScenes)
-		NovelContext ctx = prepareContext(novelRequest.getNovelId());
+		NovelContext ctx = prepareContext(novelRequest.getNovelId(), false);
 
 		// 기존장면에서 가져온 이전 호감도 변화 취소
 		// novel의 메인 캐릭터 호감도 복구
@@ -249,28 +287,28 @@ public class NovelServiceImpl implements NovelService {
 		mainChar.updateAffinity(-scene.getAffinityDelta()); // 이전 생성된 장면에서의 호감도 마이너스(복구)처리하기
 
 		// AI 전달 message bulider로 생성
-		List<Message> messages = buildMessage(ctx, scene.getUserInput()); // 이전에 사용자가 입력했던 값 그대로 다시 보내기
+		List<Message> messages = buildMessage(ctx, scene.getUserInput(), false); // 이전에 사용자가 입력했던 값 그대로 다시 보내기
 
 		// AI에게 다시 요청하여 내용 갱신
 		String jsonResponse = getAiResponse(messages);
 
-		log.debug("AI regenerate: {}", jsonResponse);
-		
+		log.debug("AI 재생성 응답: {}", jsonResponse);
+
 		// AI 응답 파싱
 		JsonNode rootNode = objectMapper.readTree(jsonResponse);
 		String aiOutput = rootNode.get("ai_output").asText();
 		int affinityDelta = rootNode.get("affinity_delta").asInt();
 		String reason = rootNode.get("reason").asText();
 		String keyEvent = rootNode.get("key_event").asText();
-		
+
 		String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
 		mainChar.updateAffinity(affinityDelta); // character entity 새 호감도 반영
 		String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
-		
+
 		scene.setAiOutput(aiOutput);
-	    scene.setKeyEvent(keyEvent);
-	    scene.setAffinityDelta(affinityDelta); // story_scene 새로운 호감도 저장
-	    scene.setAffinityAtMoment(mainChar.getAffinity()); // 갱신된 누적 호감도 스냅샷
+		scene.setKeyEvent(keyEvent);
+		scene.setAffinityDelta(affinityDelta); // story_scene 새로운 호감도 저장
+		scene.setAffinityAtMoment(mainChar.getAffinity()); // 갱신된 누적 호감도 스냅샷
 
 		scene.setRegenerated(true); // 재생성 체크
 		scene.setEdited(true); // 재생성한 내용은 수정 불가
@@ -346,7 +384,7 @@ public class NovelServiceImpl implements NovelService {
 		if (scene.getSummary() != null && !scene.getSummary().isEmpty()) {
 			summaryService.summarizeInterval(novelRequest.getNovelId());
 		}
-		
+
 		Character mainChar = characterRepository.findByNovelIdAndRole(novelRequest.getNovelId(), CharacterRole.MAIN);
 
 		// -> 두번의 AI 호출됨 (비용 고려해볼것)
@@ -359,7 +397,15 @@ public class NovelServiceImpl implements NovelService {
 	 * @param novelId
 	 * @return
 	 */
-	private NovelContext prepareContext(Long novelId) {
+	private NovelContext prepareContext(Long novelId, boolean isAuto) {
+
+		int count = isAuto ? 5 : 3; // 자동전개 모드에 따라 갯수 변경
+
+		// 최근 n개 장면 조회 및 정렬
+		List<StoryScene> previousScenes = storySceneRepository.findByNovelIdOrderBySequenceOrderDesc(novelId,
+				PageRequest.of(0, count)); // 0부터 count 까지 페이지 잘라오기
+		Collections.reverse(previousScenes); // 반대로 정렬
+
 		// 현재 소설 조회
 		Novel novel = findNovelById(novelId);
 
@@ -367,77 +413,105 @@ public class NovelServiceImpl implements NovelService {
 		Character userChar = characterRepository.findByNovelIdAndRole(novelId, CharacterRole.USER);
 		Character mainChar = characterRepository.findByNovelIdAndRole(novelId, CharacterRole.MAIN);
 
-		// 최근 3개 장면 조회 및 정렬
-		List<StoryScene> previousScenes = storySceneRepository.findTop3ByNovelIdOrderBySequenceOrderDesc(novelId);
-		Collections.reverse(previousScenes); // 반대로 정렬
-
 		return new NovelContext(novel, userChar, mainChar, previousScenes);
 	}
 
 	/**
 	 * AI 전달 Message 빌더
 	 * 
-	 * @param novel          : 현재 소설 객체
-	 * @param userChar       : 유저 캐릭터
-	 * @param mainChar       : 메인 캐릭터
-	 * @param previousScenes : 이전 스토리 StoryScene List
-	 * @param novelRequest   : 클라이언트 요청 객체
+	 * @param context    : 현재 소설 정보 모음 객체
+	 * @param userInput  : 사용자 입력값
+	 * @param isAutoMode : 자동 전개모드 플래그
 	 * @return
 	 */
-	private List<Message> buildMessage(NovelContext context, String userInput) {
+	private List<Message> buildMessage(NovelContext context, String userInput, boolean isAutoMode) {
 		Novel novel = context.novel();
 		Character userChar = context.userChar();
 		Character mainChar = context.mainChar();
 		List<StoryScene> previousScenes = context.previousScenes();
 
+		// AI 에게 전달할 메세지 List
 		List<Message> messages = new ArrayList<>();
 
 		try {
-			// AI 에게 전달할 메세지 List
 
 			// 파일에서 시스템 프롬프트 읽기
 			String baseSystemPrompt = StreamUtils.copyToString(aiSystemPromptResource.getInputStream(),
 					StandardCharsets.UTF_8);
 
-			StringBuilder fullSystemPrompt = new StringBuilder(baseSystemPrompt);
-			fullSystemPrompt.append("\n\n[현재까지의 줄거리 요약]");
+			StringBuilder initialContext = new StringBuilder();
+			;
 			if (novel.getTotalSummary() != null && !novel.getTotalSummary().isBlank()) {
-				// 요약본이 있는 경우 (5장 이후)
-				fullSystemPrompt.append("\n").append(novel.getTotalSummary());
+				initialContext.append(novel.getTotalSummary());
 			} else {
-				// [초반 예외 처리] 요약본이 없는 경우 (1~4장 사이)
-				// 소설의 기본 설명을 활용하거나, 초기 상태임을 명시
-				String initialContext = (novel.getDescription() != null && !novel.getDescription().isBlank())
+				String description = (novel.getDescription() != null && !novel.getDescription().isBlank())
 						? novel.getDescription()
 						: "이제 막 이야기가 시작되는 단계입니다. 등장인물의 설정에 집중하여 서사를 시작하세요.";
-				fullSystemPrompt.append("\n(초기 서사 단계): ").append(initialContext);
+				initialContext.append("\n(초기 서사 단계): ").append(description);
 			}
 
-			fullSystemPrompt.append("\n\n[등장인물 설정 및 페르소나]\n").append(novel.getCharacterSettings());
-			fullSystemPrompt.append("\n\n[현재 세션 캐릭터 성별 정보]");
-			fullSystemPrompt.append("\n- ").append(userChar.getName()).append(": ")
-					.append("M".equals(userChar.getGender()) ? "남성" : "여성");
-			fullSystemPrompt.append("\n- ").append(mainChar.getName()).append(": ")
-					.append("M".equals(mainChar.getGender()) ? "남성" : "여성");
-			fullSystemPrompt.append("\n\n### [현재 관계 상태]");
-			fullSystemPrompt.append("\n- 관계 등급: ").append(mainChar.getRelationshipLevel());
-			fullSystemPrompt.append("\n- 현재 호감도 점수: ").append(mainChar.getAffinity()).append("점");
+			baseSystemPrompt = baseSystemPrompt.replace("{{totalSummary}}", initialContext.toString())
+					.replace("{{characterSettings}}", novel.getCharacterSettings())
+					.replace("{{relationLevel}}", mainChar.getRelationshipLevel())
+					.replace("{{affinityScore}}", String.valueOf(mainChar.getAffinity()))
+					.replace("{{userName}}", userChar.getName()).replace("{{mainCharName}}", mainChar.getName());
 
-			messages.add(new SystemMessage(fullSystemPrompt.toString()));
+			StringBuilder instructionBuilder = new StringBuilder();
+			String userText = (userInput != null) ? userInput.trim() : "";
+			boolean hasInput = !userText.isEmpty();
+
+			if (isAutoMode && !hasInput) {
+				// 순수 자동 전개
+				instructionBuilder.append("\n\n### [MODE: PURE AUTO]\n").append("- 현재 사용자의 입력이 전혀 없는 상태입니다.\n")
+						.append("- 당신이 '작가'로서 이전 5개의 key_event를 분석해 완전히 새로운 사건이나 감정적 진전을 주도하십시오.\n")
+						.append("- 주변 환경 변화나 캐릭터의 돌발 행동을 통해 서사를 확장하십시오.");
+
+			} else if (isAutoMode && hasInput) {
+				// 가이드형 자동 전개
+				instructionBuilder.append("\n\n### [MODE: GUIDED AUTO]\n").append("- 사용자의 가이드 입력: \"").append(userText)
+						.append("\"\n").append("- 위 가이드를 방향성으로 삼되, 당신이 주도적으로 상세한 묘사와 돌발 상황을 덧붙여 서사를 풍성하게 만드십시오.\n")
+						.append("- 이전 3개의 key_event와 사용자의 가이드를 자연스럽게 연결하십시오.");
+
+			} else {
+				// 일반 사용자 입력 모드
+				instructionBuilder.append("\n\n### [MODE: MANUAL USER INPUT]\n").append("- 사용자의 입력 내용: \"")
+						.append(userText).append("\"\n")
+						.append("- 사용자의 입력을 최우선으로 반영하여 해당 상황에 대한 캐릭터의 반응과 결과를 묘사하십시오.\n")
+						.append("- 이전 3개의 key_event 맥락을 유지하십시오.");
+			}
+
+			instructionBuilder.append("\n\n[!!! CRITICAL OUTPUT RULE !!!]\n")
+					.append("- 반드시 'ai_output' 필드에 800자 내외의 풍부한 소설 본문을 작성하십시오.\n")
+					.append("- 'ai_output', 'affinity_delta', 'reason', 'key_event' 네 가지 필드는 단 하나라도 누락되어서는 안 됩니다.\n")
+					.append("- 본문(ai_output)이 없는 응답은 실패한 응답으로 간주합니다.");
+
+			// 시스템 메시지 세팅
+			messages.add(new SystemMessage(baseSystemPrompt + instructionBuilder.toString()));
 
 			// 이전 맥락(최근3개) 메시지 객체로 추가
 			for (StoryScene scene : previousScenes) {
-				messages.add(new UserMessage(scene.getUserInput()));
-				// AI가 이전 응답 맥락을 기억하도록 수정: DB에 본문만 저장되어있어 응답 포맷(JSON)을 기억못하는 이슈 발생
-				String fakeJsonResponse = String.format(
-						"{\"ai_output\": \"%s\", \"affinity_delta\": 0, \"reason\": \"이전 대화\", \"key_event\": \"%s\"}",
-						scene.getAiOutput().replace("\"", "\\\"").replace("\n", "\\n"),
-						scene.getKeyEvent() != null ? scene.getKeyEvent().replace("\"", "\\\"") : "사건 요약");
-				messages.add(new AssistantMessage(fakeJsonResponse));
+				// 이전 사용자의 입력 (없으면 자동전개 표시) : 무슨 대화를 했는지 맥락 파악 용도
+				String prevUserInput = (scene.getUserInput() != null && !scene.getUserInput().isBlank())
+						? scene.getUserInput()
+						: "(시스템: 자동 전개됨)";
+				messages.add(new UserMessage(prevUserInput));
+
+				// 이전 DB 본문을 가짜 JSON으로 감싸서 전달: 이전의 대답 형식(JSON)을 기억, 형식 유지 용도
+				Map<String, Object> assistantData = new HashMap<>();
+				assistantData.put("ai_output", scene.getAiOutput());
+				assistantData.put("affinity_delta", 0);
+				assistantData.put("reason", "이전 대화 맥락");
+				assistantData.put("key_event", scene.getKeyEvent() != null ? scene.getKeyEvent() : "사건 요약");
+
+				String assistantJson = objectMapper.writeValueAsString(assistantData);
+				messages.add(new AssistantMessage(assistantJson));
 			}
 
-			// 현재 유저 입력 추가
-			messages.add(new UserMessage(userInput));
+			if (userInput != null && !userInput.trim().isEmpty()) {
+				messages.add(new UserMessage(userInput));
+			} else {
+				messages.add(new UserMessage("이전 흐름을 이어 다음 장면을 작성하세요."));
+			}
 
 		} catch (IOException e) {
 			log.error("프롬프트 파일을 읽거나 JSON을 파싱하는 중 오류 발생", e);
