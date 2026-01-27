@@ -32,6 +32,9 @@ public class NovelResponseDTO {
 	private SceneInfoDTO lastScene; // 가장 최근 장면 (첫 진입 시에는 첫 장면)
 	private LocalDateTime createdAt; // 생성일
 	private LocalDateTime updatedAt; // 마지막 수정일
+	private boolean isDelete; // 삭제 여부
+	private boolean isAffinityModeEnabled; // 호감도 모드 활성화 여부
+	private int coverImagePosY;
 
 	private int authorId; // 작성자 id
 	private String authorName; // 작성자 이름
@@ -52,6 +55,9 @@ public class NovelResponseDTO {
 		private CharacterRole role; // USER 또는 MAIN
 		private int affinity; // 현재 호감도
 		private String personality; // 성격/특징 (AI 프롬프트용)
+		private String profileImageUrl; // 프로필 이미지(호감도 채팅용)
+		private int profileImagePosY; // 프로필 이미지 좌표
+		private String statusMessage; // 프로필 상태메시지(호감도 채팅용)
 	}
 
 	@Getter
@@ -79,6 +85,8 @@ public class NovelResponseDTO {
 	            .mainCharName(mainChar.getName())
 	            .viewCount(stats != null ? stats.getViewCount() : 0L)
 	            .likeCount(stats != null ? stats.getLikeCount() : 0L)
+	            .isDelete(novel.isDelete())
+	            .isAffinityModeEnabled(novel.isAffinityModeEnabled())
 	            .build();
 	}
 	

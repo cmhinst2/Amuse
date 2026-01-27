@@ -1,4 +1,8 @@
+import { Sidebar } from "../components/Form";
+import useAuthStore from "../store/authStore";
+
 export default function Event() {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
   // 이벤트 더미 데이터
   const events = [
     {
@@ -29,7 +33,7 @@ export default function Event() {
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
-
+      {isLoggedIn && <Sidebar />}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         {/* 헤더 영역 */}
         <header className="sticky top-0 z-50 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">

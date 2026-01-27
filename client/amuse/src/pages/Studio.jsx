@@ -5,6 +5,8 @@ import useAuthStore from "../store/authStore";
 import novelAPI from "../api/novelAPI";
 import { LoadingScreen } from "../components/Spinner";
 import { BookPlus, Eye, Heart } from "lucide-react";
+import { useState } from "react";
+import { getServerBaseUrl } from "../api/converter";
 
 export default function Studio() {
   const navigate = useNavigate();
@@ -108,7 +110,12 @@ export default function Studio() {
 // 작품 List 컴포넌트 분리
 export const NovelList = ({ data, isOwner }) => {
   const navigate = useNavigate();
-  
+
+  // 작품 관리 핸들러
+  const handleManageNovel = (novel) => {
+    navigate(`/studio/setting/${novel.id}`);
+  }
+
   if (isOwner && data.length == 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[400px] p-8 rounded-2xl bg-[#1e293b] border border-[#334155] shadow-xl">
@@ -134,21 +141,21 @@ export const NovelList = ({ data, isOwner }) => {
     )
   }
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
       {data.map((novel, index) => (
         <div
           key={`${novel.id}_${index}`}
-          onClick={() => navigate(`/studio/write/${novel.id}`)}
-          className="group relative flex flex-col cursor-pointer transition-all duration-300"
+          className="group relative flex flex-col transition-all duration-300"
         >
-          <div className="relative z-10 w-full aspect-[3/4] rounded-r-lg overflow-hidden shadow-[10px_10px_20px_rgba(0,0,0,0.5)] group-hover:shadow-[15px_15px_30px_rgba(251,113,133,0.3)] group-hover:-translate-y-2 transition-all duration-300">
+          <div onClick={() => navigate(`/studio/write/${novel.id}`)}
+            className="cursor-pointer relative z-10 w-full aspect-[3/4] rounded-r-lg overflow-hidden shadow-[10px_10px_20px_rgba(0,0,0,0.5)] group-hover:shadow-[15px_15px_30px_rgba(251,113,133,0.3)] group-hover:-translate-y-2 transition-all duration-300">
             <div className="absolute inset-y-0 left-0 w-1 bg-gradient-to-r from-black/30 to-transparent z-20" />
 
             {novel.coverImageUrl ? (
               <img
-                src={`http://localhost${novel.coverImageUrl}`}
+                src={getServerBaseUrl(novel.coverImageUrl)}
                 alt={novel.title}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-top"
               />
             ) : (
               <div className="w-full h-full bg-[#1e293b] flex items-center justify-center border border-[#334155]">
@@ -164,10 +171,14 @@ export const NovelList = ({ data, isOwner }) => {
               <div className="h-[2px] w-6 bg-[#FB7185] rounded-full mt-1 mb-2" />
             </div>
 
-            <div className="absolute top-3 left-3 z-30">
+            <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
               <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md 
-            ${novel.isShared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                ${novel.isShared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
                 {novel.isShared ? '연재 중' : '비공개'}
+              </span>
+              <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
+                ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                채팅모드 {novel.affinityModeEnabled ? 'ON' : 'OFF'}
               </span>
             </div>
           </div>
@@ -175,33 +186,39 @@ export const NovelList = ({ data, isOwner }) => {
           <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[85%] h-4 bg-black/50 blur-xl rounded-[100%] group-hover:opacity-70 transition-opacity" />
 
           <div className="mt-4 px-1">
-            <div className="flex flex-col gap-1">
-              <h4 className="text-base font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
-                {novel.title}
-              </h4>
-
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-1">
-                  <Heart size={14} className={novel.likeCount > 0 ? "fill-[#FB7185] text-[#FB7185]" : "text-[#94A3B8]"} />
-                  <span className="text-xs font-medium text-[#94A3B8]">{novel.likeCount}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Eye size={14} className="text-[#94A3B8]" />
-                  <span className="text-xs font-medium text-[#94A3B8]">{novel.viewCount}</span>
-                </div>
-              </div>
-            </div>
-            {
-              isOwner &&
-              <div className="flex items-center justify-between mt-3">
+            <div className="flex flex-col">
+              <section onClick={() => navigate(`/studio/write/${novel.id}`)} className="flex items-center justify-between mb-2 cursor-pointer ">
+                <h4 className="text-base font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
+                  {novel.title}
+                </h4>
                 <span className={`text-[13px] font-medium px-2 py-0.5 rounded border ${novel.status == 'PROCESS'
                   ? 'text-[#818cf8] border-[#818cf8]/30 bg-[#818cf8]/5'
                   : 'text-[#94A3B8] border-[#334155]'
                   }`}>
                   {novel.status === 'PROCESS' ? '집필 중' : '집필 완료'}
                 </span>
+              </section>
+              <section className="flex gap-2 mb-2">
+                {novel.tags.map((tag, idx) => (
+                  <span className="text-[12px]" key={`${tag}_${idx}`}>#{tag}</span>
+                ))}
+              </section>
+            </div>
+            {
+              isOwner &&
+              <div className="flex items-center justify-between mt-3">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1">
+                    <Heart size={14} className={novel.likeCount > 0 ? "fill-[#FB7185] text-[#FB7185]" : "text-[#94A3B8]"} />
+                    <span className="text-xs font-medium text-[#94A3B8]">{novel.likeCount}</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Eye size={14} className="text-[#94A3B8]" />
+                    <span className="text-xs font-medium text-[#94A3B8]">{novel.viewCount}</span>
+                  </div>
+                </div>
 
-                <button className="text-[10px] font-bold text-[#FB7185] hover:underline">
+                <button onClick={() => handleManageNovel(novel)} className="text-[13px] font-bold text-[#FB7185] hover:underline">
                   작품 관리 →
                 </button>
               </div>

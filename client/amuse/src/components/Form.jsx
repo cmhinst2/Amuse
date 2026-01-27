@@ -10,6 +10,7 @@ export default function Header() {
   const store = useAuthStore((state) => state.userInfo);
   const accessToken = useAuthStore((state) => state.accessToken);
   const logout = useAuthStore((state) => state.logout);
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
 
   const user = {
     nickname: store?.nickname,
@@ -52,6 +53,7 @@ export default function Header() {
         </Link>
 
         <nav className="hidden md:flex gap-8 text-[13px] tracking-widest text-[#94A3B8]">
+          <Link to="/library" className="hover:text-[#F1F5F9] transition-colors">도서관</Link>
           <Link to="/notice" className="hover:text-[#F1F5F9] transition-colors">공지사항</Link>
           <Link to="/event" className="hover:text-[#F1F5F9] transition-colors">이벤트</Link>
         </nav>
@@ -69,11 +71,14 @@ export default function Header() {
         </div>
 
         {/* 알림 버튼 */}
-        <button className="text-[#94A3B8] hover:text-[#FB7185] transition-colors">
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-          </svg>
-        </button>
+        {!isLoggedIn ?
+          <button className="text-[#FB7185] font-bold" onClick={() => navigate('/login')}>로그인</button> :
+          <button className="text-[#94A3B8] hover:text-[#FB7185] transition-colors">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.5" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </button>
+        }
 
         {/* --- 사용자 프로필 & 드롭다운 영역 --- */}
         {store?.nickname &&
@@ -146,6 +151,7 @@ export function Sidebar() {
 
   const menuItems = [
     { name: '홈', path: '/' },
+    { name: '나의 Muse', path: '/muse' },
     { name: '내 스튜디오', path: '/studio' },
     { name: '관심 목록', path: '/favorites' },
     { name: '티켓', path: '/ticket' },

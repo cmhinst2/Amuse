@@ -15,3 +15,8 @@ export const getJosa = (name, first, second) => {
   const lastCode = (lastChar - 0xAC00) % 28;
   return lastCode > 0 ? `${name}${first}` : `${name}${second}`;
 };
+
+
+export const getServerBaseUrl = (path) => {
+  return `http://localhost${path}`;
+}

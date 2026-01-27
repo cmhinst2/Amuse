@@ -1,5 +1,6 @@
 package com.muse.amuze.novel.controller;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.http.MediaType;
@@ -73,6 +74,8 @@ public class NovelController {
 	            .id(novel.getId())
 	            .title(novel.getTitle())
 	            .description(novel.getDescription())
+	            .coverImageUrl(novel.getCoverImageUrl())
+	            .coverImagePosY(novel.getCoverImagePosY())
 	            .totalSummary(novel.getTotalSummary())
 	            .characters(characters.stream()
 	                    .map(c -> NovelResponseDTO.CharacterInfoDTO.builder()
@@ -80,6 +83,9 @@ public class NovelController {
 	                            .name(c.getName())
 	                            .role(c.getRole())
 	                            .affinity(c.getAffinity())
+	                            .profileImageUrl(c.getProfileImageUrl())
+	                            .profileImagePosY(c.getProfileImagePosY())
+	                            .statusMessage(c.getStatusMessage())
 	                            .build())
 	                    .toList())
 	            .lastScene(NovelResponseDTO.SceneInfoDTO.builder()
@@ -87,8 +93,11 @@ public class NovelController {
 	                    .content(lastScene.getAiOutput())
 	                    .sequenceOrder(lastScene.getSequenceOrder())
 	                    .build())
+	            .tags(new ArrayList<>(novel.getTags()))
 	            .authorId(novel.getAuthor().getId())
 	            .authorName(novel.getAuthor().getNickname())
+	            .isDelete(novel.isDelete())
+	            .isAffinityModeEnabled(novel.isAffinityModeEnabled())
 	            .build());
 	}
 	

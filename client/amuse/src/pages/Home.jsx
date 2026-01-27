@@ -48,7 +48,7 @@ export default function Home() {
             <div className="absolute -top-32 -right-32 w-[500px] h-[500px] bg-[#FB7185]/30 blur-[120px] rounded-full group-hover:bg-[#FB7185]/50 group-hover:blur-[80px] transition-all duration-700 mix-blend-screen" />
 
             {/* 콘텐츠 영역 */}
-            <div className="relative z-10 flex flex-col justify-center h-full px-12 space-y-5">
+            <div className="relative z-5 flex flex-col justify-center h-full px-12 space-y-5">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 bg-[#FB7185] rounded-full animate-pulse" />
                 <span className="text-xs font-bold tracking-[0.2em] text-[#FB7185] uppercase">

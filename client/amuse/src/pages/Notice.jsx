@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
 import { Sidebar } from "../components/Form";
+import useAuthStore from '../store/authStore';
 
 export default function Notice() {
+  const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
+  const [expandedId, setExpandedId] = useState(null); // 아코디언 형식 상태값
   // 공지사항 더미 데이터
   const [notices] = useState([
     {
@@ -30,9 +33,6 @@ export default function Notice() {
     }
   ]);
 
-  // 아코디언 형태로 내용을 보기 위한 상태 (선택 사항)
-  const [expandedId, setExpandedId] = useState(null);
-
   const toggleNotice = (id) => {
     setExpandedId(expandedId === id ? null : id);
   };
@@ -40,44 +40,43 @@ export default function Notice() {
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
 
+      {isLoggedIn && <Sidebar />}
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         {/* 헤더 영역 */}
         <header className="sticky top-0 z-50 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
+
           <h1 className="text-xl font-black text-[#FB7185] tracking-tight">공지사항</h1>
           <div className="flex items-center gap-4">
-             <div className="relative">
-                <input 
-                  type="text" 
-                  placeholder="공지 검색" 
-                  className="bg-[#1e293b] text-xs px-4 py-2 rounded-full border border-[#334155] focus:outline-none focus:border-[#FB7185] transition-all"
-                />
-             </div>
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="공지 검색"
+                className="bg-[#1e293b] text-xs px-4 py-2 rounded-full border border-[#334155] focus:outline-none focus:border-[#FB7185] transition-all"
+              />
+            </div>
           </div>
         </header>
 
         {/* 공지사항 목록 섹션 */}
         <section className="p-8 max-w-5xl mx-auto space-y-4">
           {notices.map((notice) => (
-            <div 
+            <div
               key={notice.id}
-              className={`group border border-[#334155]/30 rounded-[1.5rem] transition-all duration-300 overflow-hidden ${
-                expandedId === notice.id ? 'bg-[#1e293b]' : 'bg-[#1e293b]/50 hover:bg-[#1e293b]'
-              }`}
+              className={`group border border-[#334155]/30 rounded-[1.5rem] transition-all duration-300 overflow-hidden ${expandedId === notice.id ? 'bg-[#1e293b]' : 'bg-[#1e293b]/50 hover:bg-[#1e293b]'
+                }`}
             >
               {/* 공지 제목 줄 */}
-              <button 
+              <button
                 onClick={() => toggleNotice(notice.id)}
                 className="w-full px-8 py-6 flex flex-col md:flex-row md:items-center justify-between gap-4 text-left"
               >
                 <div className="flex items-center gap-4">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${
-                    notice.isImportant ? 'bg-[#FB7185] text-[#0f172a]' : 'bg-[#334155] text-[#94A3B8]'
-                  }`}>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-tighter ${notice.isImportant ? 'bg-[#FB7185] text-[#0f172a]' : 'bg-[#334155] text-[#94A3B8]'
+                    }`}>
                     {notice.tag}
                   </span>
-                  <h3 className={`font-bold transition-colors ${
-                    expandedId === notice.id ? 'text-[#FB7185]' : 'text-[#F1F5F9] group-hover:text-[#FB7185]'
-                  }`}>
+                  <h3 className={`font-bold transition-colors ${expandedId === notice.id ? 'text-[#FB7185]' : 'text-[#F1F5F9] group-hover:text-[#FB7185]'
+                    }`}>
                     {notice.title}
                   </h3>
                 </div>
@@ -90,9 +89,8 @@ export default function Notice() {
               </button>
 
               {/* 공지 상세 내용 (아코디언) */}
-              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
-                expandedId === notice.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
-              }`}>
+              <div className={`overflow-hidden transition-all duration-500 ease-in-out ${expandedId === notice.id ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0'
+                }`}>
                 <div className="px-8 pb-8 pt-2 text-[#94A3B8] leading-relaxed text-sm border-t border-[#334155]/20 mt-2">
                   <div className="bg-[#0f172a]/50 p-6 rounded-2xl">
                     {notice.content}

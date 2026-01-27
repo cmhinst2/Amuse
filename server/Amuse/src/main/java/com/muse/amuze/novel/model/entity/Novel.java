@@ -73,4 +73,14 @@ public class Novel extends BaseTimeEntity {
 
     @Column(name = "shared_at")
     private LocalDateTime sharedAt;
+    
+    @Column(name = "is_delete")
+    private boolean isDelete;
+    
+    @Column(name = "is_affinity_mode_enabled")
+    private boolean isAffinityModeEnabled;
+    
+    @Column(name = "cover_image_pos_y", nullable = false)
+    @Builder.Default
+    private Integer coverImagePosY = 50;
 }

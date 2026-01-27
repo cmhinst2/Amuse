@@ -16,6 +16,8 @@ import { StudioWriteContent } from "../pages/StudioWriteContent";
 import { useQuery } from "@tanstack/react-query";
 import novelAPI from "../api/novelAPI";
 import { LoadingScreen } from "./Spinner";
+import { Library } from "../pages/Libaray";
+import { NovelManagementPage } from "../pages/NovelManagementPage";
 
 
 export default function Layout() {
@@ -44,17 +46,25 @@ export default function Layout() {
                     <Route path="/studio" element={<Studio />} />
                     <Route path="/studio/write" element={<StudioWriteSetting />} />
                     <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
+                    <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />
+                    <Route path="/library" element={<Library />} />
                     <Route path="/notice" element={<Notice />} />
                     <Route path="/event" element={<Event />} />
                   </Routes>
                 }
               />
             ) : (
-              /* 로그인 안 했을 때: 어떤 주소로 들어와도 /login으로 리다이렉트 */
-              <Route path="*" element={<Navigate to="/login" replace />} />
+              /* 로그인 안 했을 때: / (메인)으로 들어오면 /login으로 리다이렉트 */
+              // <Route path="/" element={<Navigate to="/login" replace />} />
+              <>
+                <Route path="/" element={<Library />} />
+                <Route path="/library" element={<Library />} />
+                <Route path="/notice" element={<Notice />} />
+                <Route path="/event" element={<Event />} />
+              </>
             )}
           </Routes>
         </main>
@@ -67,7 +77,7 @@ export default function Layout() {
 
 const NovelAuthorGuard = ({ children }) => {
   const { novelId } = useParams();
-  const userInfo  = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보 (Context 등에서 가져옴)
+  const userInfo = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보 (Context 등에서 가져옴)
 
   // 내가 쓴 소설 데이터 조회
   const { data: novel, isLoading } = useQuery({

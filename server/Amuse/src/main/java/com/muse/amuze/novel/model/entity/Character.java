@@ -58,6 +58,16 @@ public class Character extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String gender;
     
+    @Column(columnDefinition = "TEXT")
+    private String profileImageUrl;
+    
+    @Column(name = "profile_image_pos_y", nullable = false)
+    @Builder.Default
+    private Integer profileImagePosY = 50;
+    
+    @Column(columnDefinition = "TEXT")
+    private String statusMessage;
+    
     // 호감도 계산
     public void updateAffinity(int delta) {
     	// 현재 등급에 따른 하한선
