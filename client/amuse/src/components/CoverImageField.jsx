@@ -4,7 +4,6 @@ import CoverImageDragger from './CoverImageDragger';
 import { getServerBaseUrl } from '../api/converter';
 
 export const CoverImageField = ({ imageUrl, posY, onDataChange }) => {
-  // 사용자가 직접 업로드한 파일의 로컬 미리보기 URL만 상태로 관리
   const [localPreview, setLocalPreview] = useState(null);
   const fileInputRef = useRef(null);
 
@@ -18,11 +17,11 @@ export const CoverImageField = ({ imageUrl, posY, onDataChange }) => {
     } else {
       setLocalPreview(getServerBaseUrl(imageUrl));
     }
-  }, [imageUrl]); // imageUrl이 바뀔 때마다 실행
+  }, [imageUrl]);
 
 
   const handleEditClick = (e) => {
-    e.stopPropagation(); // 드래그 이벤트와 겹치지 않게 방지
+    e.stopPropagation();
     fileInputRef.current?.click();
   };
 
@@ -39,13 +38,10 @@ export const CoverImageField = ({ imageUrl, posY, onDataChange }) => {
   return (
     <div className="space-y-2">
       <div className="flex justify-between items-center">
-        <label className="text-sm font-semibold text-[#94A3B8]">커버 이미지</label>
-        {localPreview && (
-          <span className="text-xs text-[#FB7185] animate-pulse">새 이미지 적용 중...</span>
-        )}
+        <label className="text-sm font-semibold text-[#94A3B8]">커버 이미지 <span className="text-[12px]">(드래그하여 위치 조정)</span></label>
       </div>
 
-      <div className="relative group w-full aspect-[3/4] md:w-80 rounded-2xl overflow-hidden shadow-2xl border border-[#334155] hover:border-[#FB7185]">
+      <div className="relative group w-full aspect-[3/4] md:w-80 rounded-2xl overflow-hidden shadow-2xl border border-[#334155] border-4 hover:border-[#FB7185]">
         <CoverImageDragger
           imageUrl={localPreview}
           initialPosY={posY}

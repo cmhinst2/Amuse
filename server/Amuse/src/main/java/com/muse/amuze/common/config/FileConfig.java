@@ -43,6 +43,13 @@ public class FileConfig implements WebMvcConfigurer{
 	@Value("${amuse.novel.resource-location}")
 	private String novelResourceLocation;
 	
+	// 캐릭터 프로필 이미지 관련 경로
+	@Value("${amuse.char.resource-handler}")
+	private String charResourceHandler;
+	
+	@Value("${amuse.char.resource-location}")
+	private String charResourceLocation;
+	
 	@Override
 	public void addResourceHandlers(ResourceHandlerRegistry registry) {
 		
@@ -51,6 +58,9 @@ public class FileConfig implements WebMvcConfigurer{
 		
 		registry.addResourceHandler(novelResourceHandler)
 		.addResourceLocations(novelResourceLocation);
+		
+		registry.addResourceHandler(charResourceHandler)
+		.addResourceLocations(charResourceLocation);
 		
 	}
 	

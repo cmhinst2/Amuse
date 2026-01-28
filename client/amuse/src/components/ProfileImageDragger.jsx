@@ -1,16 +1,18 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Draggable from 'react-draggable';
+import amuseDefaultProfile from "../assets/amuse_profile.png";
 
-const CoverImageDragger = ({ imageUrl, initialPosY, onChange }) => {
+const ProfileImageDragger = ({ imageUrl, initialPosY, onChange }) => {
   const [posY, setPosY] = useState(initialPosY); // 0~100 사이의 퍼센트 상태
   const nodeRef = useRef(null);
 
   useEffect(() => {
     setPosY(initialPosY);
-  }, [initialPosY]);
+  }, [initialPosY, imageUrl]);
 
   // 드래그 핸들러
   const handleDrag = (e, data) => {
+    if(imageUrl == null) return;
     const containerHeight = nodeRef.current?.offsetHeight || 300;
     const sensitivity = 2; // 감도
     let newPosY = posY - (data.deltaY / containerHeight) * 100 * sensitivity;
@@ -20,15 +22,16 @@ const CoverImageDragger = ({ imageUrl, initialPosY, onChange }) => {
 
   // 드래그 종료 핸들러
   const handleStop = () => {
+    if(imageUrl == null) return;
     if (onChange) {
-      onChange('coverImagePosY', Math.round(posY));
+      onChange('profileImagePosY', Math.round(posY));
     }
   }
 
   return (
-    <div className="relative w-full h-full aspect-[3/4] overflow-hidden bg-slate-900 rounded-xl group">
+    <div className="relative w-full h-full">
       <img
-        src={imageUrl}
+        src={imageUrl || amuseDefaultProfile}
         alt="Cover"
         className="w-full h-full object-cover pointer-events-none select-none"
         style={{ objectPosition: `center ${posY}%` }}
@@ -56,4 +59,4 @@ const CoverImageDragger = ({ imageUrl, initialPosY, onChange }) => {
   );
 };
 
-export default CoverImageDragger;
+export default ProfileImageDragger;

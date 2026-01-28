@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.muse.amuze.novel.model.dto.NovelSettingRequest;
 import com.muse.amuze.user.model.entity.User;
 
 import jakarta.persistence.CollectionTable;
@@ -83,4 +84,20 @@ public class Novel extends BaseTimeEntity {
     @Column(name = "cover_image_pos_y", nullable = false)
     @Builder.Default
     private Integer coverImagePosY = 50;
+
+	public void updateSettings(NovelSettingRequest request) {
+		if (request.getTitle() != null) this.title = request.getTitle();
+	    if (request.getDescription() != null) this.description = request.getDescription();
+	    if (request.getCoverImagePosY() != null) this.coverImagePosY = request.getCoverImagePosY();
+	    if (request.getIsShared() != null) this.isShared = request.getIsShared();
+	    if (request.getIsDelete() != null) this.isDelete = request.getIsDelete();
+	    if (request.getIsAffinityModeEnabled() != null) this.isAffinityModeEnabled = request.getIsAffinityModeEnabled();
+	}
+	
+	public void updateTags(List<String> newTags) {
+	    if (newTags == null) return; // 수정 사항이 없으면 무시
+	    
+	    this.tags.clear(); // 기존 novel_tags 테이블의 해당 novel_id 레코드 전부 삭제 예약
+	    this.tags.addAll(newTags); // 새로운 태그들로 다시 삽입 예약
+	}
 }

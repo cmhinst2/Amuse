@@ -7,6 +7,8 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -17,6 +19,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
 import com.muse.amuze.novel.model.dto.NovelResponseDTO;
+import com.muse.amuze.novel.model.dto.NovelSettingRequest;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
 import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Character;
@@ -96,6 +99,7 @@ public class NovelController {
 	            .tags(new ArrayList<>(novel.getTags()))
 	            .authorId(novel.getAuthor().getId())
 	            .authorName(novel.getAuthor().getNickname())
+	            .isShared(novel.isShared())
 	            .isDelete(novel.isDelete())
 	            .isAffinityModeEnabled(novel.isAffinityModeEnabled())
 	            .build());
@@ -153,5 +157,17 @@ public class NovelController {
 	public ResponseEntity<StorySceneResponse> generateEditScene(@RequestBody UserNovelRequest novelRequest) throws Exception{
 		StorySceneResponse response = novelService.generateEditScene(novelRequest);
         return ResponseEntity.ok(response);
+	}
+
+	
+	/** 소설 정보 업데이트
+	 * @param novelId
+	 * @return
+	 */
+	@PatchMapping(value = "setting/{novelId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	public ResponseEntity<?> updateNovelSettings(@PathVariable("novelId") Long novelId, 
+												@ModelAttribute NovelSettingRequest request) throws Exception{
+		int result = novelService.updateNovelSettings(novelId, request);
+		return ResponseEntity.ok("소설 정보 업데이트 성공");
 	}
 }

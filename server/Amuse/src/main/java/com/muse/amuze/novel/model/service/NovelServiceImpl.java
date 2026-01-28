@@ -32,6 +32,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.amuze.common.util.Utility;
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
 import com.muse.amuze.novel.model.dto.NovelResponseDTO;
+import com.muse.amuze.novel.model.dto.NovelSettingRequest;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
 import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Character;
@@ -70,6 +71,12 @@ public class NovelServiceImpl implements NovelService {
 
 	@Value("${amuse.novel.folder-path}")
 	private String novelFolderPath;
+
+	@Value("${amuse.char.web-path}")
+	private String charProfileWebPath;
+
+	@Value("${amuse.char.folder-path}")
+	private String charProfileFolderPath;
 
 	@Value("classpath:prompts/write-system-prompt.txt")
 	private Resource aiSystemPromptResource;
@@ -244,18 +251,22 @@ public class NovelServiceImpl implements NovelService {
 
 			} catch (Exception e) {
 				attempt++;
-	            log.warn("AI 응답 생성 실패 (시도 {}/{}): {}", attempt, maxRetries + 1, e.getMessage());
-	            
-	            if (attempt > maxRetries) {
-	                log.error("최대 재시도 횟수를 초과했습니다.");
-	                throw new RuntimeException("AI 작가가 현재 원고 작성을 거부하고 있습니다. 잠시 후 다시 시도해 주세요.");
-	            }
-	            
-	            // 네트워크나 api의 일시적 오류를 대비하여 재시도 전 짧게 대기 후 수행
-	            try { Thread.sleep(500); } catch (InterruptedException ie) { Thread.currentThread().interrupt(); }
+				log.warn("AI 응답 생성 실패 (시도 {}/{}): {}", attempt, maxRetries + 1, e.getMessage());
+
+				if (attempt > maxRetries) {
+					log.error("최대 재시도 횟수를 초과했습니다.");
+					throw new RuntimeException("AI 작가가 현재 원고 작성을 거부하고 있습니다. 잠시 후 다시 시도해 주세요.");
+				}
+
+				// 네트워크나 api의 일시적 오류를 대비하여 재시도 전 짧게 대기 후 수행
+				try {
+					Thread.sleep(500);
+				} catch (InterruptedException ie) {
+					Thread.currentThread().interrupt();
+				}
 			}
 		}
-		
+
 		throw new RuntimeException("예기치 못한 시스템 오류가 발생했습니다.");
 	}
 
@@ -389,6 +400,59 @@ public class NovelServiceImpl implements NovelService {
 
 		// -> 두번의 AI 호출됨 (비용 고려해볼것)
 		return StorySceneResponse.of(scene, 0, "직접 수정됨", mainChar, false);
+	}
+
+	/**
+	 * 소설 정보 업데이트 서비스
+	 * 
+	 * @throws IOException
+	 * @throws IllegalStateException
+	 *
+	 */
+	@Transactional
+	@Override
+	public int updateNovelSettings(Long novelId, NovelSettingRequest request) throws Exception {
+		Novel novel = novelRepository.findById(novelId).orElseThrow(() -> new RuntimeException("소설을 찾을 수 없습니다."));
+
+		// null 값 제외한 일반 필드 업데이트
+		novel.updateSettings(request);
+		
+		// 태그 업데이트
+		if (request.getTags() != null) {
+	        novel.updateTags(request.getTags());
+	    }
+
+		// 커버 이미지 처리
+		MultipartFile coverImage = request.getCoverImageUrl();
+		String coverRename = null;
+		if (coverImage != null && !coverImage.isEmpty()) {
+			coverRename = Utility.fileRename(coverImage.getOriginalFilename());
+			coverImage.transferTo(new File(novelFolderPath + coverRename));
+			novel.setCoverImageUrl(novelWebPath + coverRename);
+		}
+
+		// 캐릭터 정보 + 프로필 이미지 처리
+		if (request.getMainCharId() != null) {
+			Character mainChar = characterRepository.findById(request.getMainCharId())
+					.orElseThrow(() -> new RuntimeException("캐릭터를 찾을 수 없습니다."));
+
+			// 일반 정보 null 제외 업데이트 처리
+			if (request.getStatusMessage() != null)
+				mainChar.setStatusMessage(request.getStatusMessage());
+			if (request.getProfileImagePosY() != null)
+				mainChar.setProfileImagePosY(request.getProfileImagePosY());
+
+			MultipartFile profileImage = request.getProfileImageUrl();
+			String profileRename = null;
+			if (profileImage != null && !profileImage.isEmpty()) {
+				profileRename = Utility.fileRename(profileImage.getOriginalFilename());
+				profileImage.transferTo(new File(charProfileFolderPath + profileRename));
+				mainChar.setProfileImageUrl(charProfileWebPath + profileRename);
+			}
+
+		}
+
+		return 1;
 	}
 
 	/**

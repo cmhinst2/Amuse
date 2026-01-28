@@ -6,6 +6,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
 import com.muse.amuze.novel.model.dto.NovelResponseDTO;
+import com.muse.amuze.novel.model.dto.NovelSettingRequest;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
 import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Novel;
@@ -64,6 +65,13 @@ public interface NovelService {
 	 * @return
 	 */
 	StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception;
+
+	/** 소설 설정 정보 업데이트 서비스
+	 * @param novelId
+	 * @param novelSettingRequest
+	 * @return
+	 */
+	int updateNovelSettings(Long novelId, NovelSettingRequest request) throws Exception;
 
 
 
