@@ -6,6 +6,7 @@ import java.util.List;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -164,10 +165,21 @@ public class NovelController {
 	 * @param novelId
 	 * @return
 	 */
-	@PatchMapping(value = "setting/{novelId}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+	@PatchMapping(value = "{novelId}/setting", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
 	public ResponseEntity<?> updateNovelSettings(@PathVariable("novelId") Long novelId, 
 												@ModelAttribute NovelSettingRequest request) throws Exception{
+		
 		int result = novelService.updateNovelSettings(novelId, request);
 		return ResponseEntity.ok("소설 정보 업데이트 성공");
+	}
+	
+	/** 소설 삭제
+	 * @param novelId
+	 * @return
+	 */
+	@PatchMapping("{novelId}/delete")
+	public ResponseEntity<?> deleteNovel(@PathVariable("novelId") Long novelId) {
+		int result = novelService.deleteNovel(novelId);
+		return ResponseEntity.ok("소설 삭제 성공");
 	}
 }

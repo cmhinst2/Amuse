@@ -21,7 +21,8 @@ export function NovelManagementPage() {
     queryKey: ['novel', novelId],
     queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId,
-    staleTime: 1000 * 60 * 5
+    staleTime: 1000 * 60 * 5,
+    retry: false,
   });
 
   // RHF
@@ -50,7 +51,7 @@ export function NovelManagementPage() {
 
   // <mutate>
   const { mutate: updateNovelSetting } = useMutation({
-    mutationFn: (formData) => novelAPI.patch(`/api/novel/setting/${novelId}`, formData),
+    mutationFn: (formData) => novelAPI.patch(`/api/novel/${novelId}/setting`, formData),
     onSuccess: (updatedData) => {
       reset(getValues()); // 데이터를 다시 초기값으로 설정 dirtyFields 깨끗히 비움
       toast("소설 설정 업데이트 성공!", {
@@ -68,6 +69,15 @@ export function NovelManagementPage() {
           color: '#F1F5F9'
         }
       })
+    }
+  });
+
+  const { mutate: deleteNovel } = useMutation({
+    mutationFn: (id) => novelAPI.patch(`/api/novel/${id}/delete`),
+    onSuccess: () => navigate("/studio"),
+    onError: (error) => {
+      console.log(error);
+      toast("💥 삭제 중 에러 발생!");
     }
   });
 
@@ -96,6 +106,45 @@ export function NovelManagementPage() {
     // 메인 캐릭터의 id는 강제 세팅
     formData.append("mainCharId", novel.characters.find((c) => c.role == 'MAIN').id);
     updateNovelSetting(formData);
+  }
+
+  // 영구 삭제 버튼 핸들러
+  const handleDelete = () => {
+    toast("정말 삭제하시겠습니까?", {
+      action: {
+        label: "삭제하기",
+        onClick: () => deleteNovel(novelId),
+      },
+      cancel: {
+        label: "취소",
+        onClick: () => console.log("취소됨"),
+      },
+      style: {
+        background: '#1e293b',
+        color: '#F1F5F9',
+        border: '1px solid #334155',
+        borderLeft: '4px solid #eb1838',
+        padding: '15px',
+        borderRadius: '12px',
+        fontSize: '13px',
+      },
+      actionButtonStyle: {
+        backgroundColor: '#eb1838',
+        color: '#ffffff',
+        fontWeight: '600',
+        padding: '16px',
+        borderRadius: '6px',
+        fontSize: '14px',
+      },
+      cancelButtonStyle: {
+        backgroundColor: '#334155',
+        color: '#94A3B8',
+        padding: '16px',
+        borderRadius: '6px',
+        fontSize: '14px',
+      },
+      duration: Infinity,
+    });
   }
 
   if (isNovelLoading) return <p>Loading...</p>;
@@ -265,7 +314,8 @@ export function NovelManagementPage() {
                     작품을 삭제하면 모든 소설 내용, 대화 내역, 호감도 데이터가 영구히 삭제됩니다.
                     이 작업은 되돌릴 수 없습니다.
                   </p>
-                  <button className="mt-4 bg-red-500 hover:bg-red-600 px-6 py-2 rounded-lg font-bold text-white transition-all">
+                  <button onClick={handleDelete}
+                    className="mt-4 bg-red-500 hover:bg-red-600 px-6 py-2 rounded-lg font-bold text-white transition-all">
                     영구 삭제 요청
                   </button>
                 </div>

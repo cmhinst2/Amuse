@@ -91,8 +91,8 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Override
 	public Novel findNovelById(Long novelId) {
-		return novelRepository.findById(novelId)
-				.orElseThrow(() -> new EntityNotFoundException("소설을 찾을 수 없습니다. ID: " + novelId));
+		return novelRepository.findByIdAndIsDeleteFalse(novelId)
+				.orElseThrow(() -> new EntityNotFoundException("소설을 찾을 수 없거나 삭제되었습니다. ID: " + novelId));
 	}
 
 	/**
@@ -337,13 +337,13 @@ public class NovelServiceImpl implements NovelService {
 	}
 
 	/**
-	 * userId와 일치하는 소설 List 조회
+	 * userId와 일치하는 소설(삭제된 것 제외) List 조회
 	 *
 	 */
 	@Transactional
 	@Override
 	public List<NovelResponseDTO> getMyNovelList(int userId) {
-		List<Novel> novelList = novelRepository.findNovelsByAuthorId(userId);
+		List<Novel> novelList = novelRepository.findAllByAuthorIdAndIsDeleteFalse(userId);
 
 		List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
 
@@ -452,6 +452,19 @@ public class NovelServiceImpl implements NovelService {
 
 		}
 
+		return 1;
+	}
+	
+	/** 소설 삭제 서비스
+	 *
+	 */
+	@Transactional
+	@Override
+	public int deleteNovel(Long novelId) {
+		Novel novel = novelRepository.findByIdAndIsDeleteFalse(novelId)
+	            .orElseThrow(() -> new EntityNotFoundException("소설을 찾을 수 없거나 이미 삭제되었습니다. ID: " + novelId));
+		novel.setDelete(true);
+		
 		return 1;
 	}
 

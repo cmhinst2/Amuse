@@ -73,6 +73,12 @@ public interface NovelService {
 	 */
 	int updateNovelSettings(Long novelId, NovelSettingRequest request) throws Exception;
 
+	/** 소설 삭제
+	 * @param novelId
+	 * @return
+	 */
+	int deleteNovel(Long novelId);
+
 
 
 }

@@ -1,6 +1,7 @@
 package com.muse.amuze.novel.model.repository;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -14,7 +15,12 @@ public interface NovelRepository extends JpaRepository<Novel, Long>{
 	@EntityGraph(attributePaths = {"author", "tags"})
     @Query("SELECT n FROM Novel n " +
            "WHERE n.author.id = :userId " +
+           "AND n.isDelete = false " +
            "ORDER BY n.id DESC")
-    List<Novel> findNovelsByAuthorId(@Param("userId") int userId);
+	List<Novel> findAllByAuthorIdAndIsDeleteFalse(@Param("userId") int userId);
+
+	@EntityGraph(attributePaths = {"author", "tags"})
+	Optional<Novel> findByIdAndIsDeleteFalse(Long novelId);
+
 
 }

@@ -37,11 +37,9 @@ function App() {
   return (
     <BrowserRouter>
       <Layout />
-      <Toaster 
-        theme="dark" 
-        position="top-center" 
-        expand={false} 
-        richColors 
+      <Toaster
+        theme="dark"
+        position="top-center"
       />
     </BrowserRouter>
   )

@@ -1,6 +1,6 @@
 
 import LoginPage from "../pages/LoginPage";
-import { Routes, Route, Navigate, useParams } from "react-router-dom";
+import { Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
 import KakaoCallback from "./KakaoCallback";
 import Header, { Footer } from "./Form";
 import useAuthStore from "../store/authStore";
@@ -77,22 +77,27 @@ export default function Layout() {
 
 const NovelAuthorGuard = ({ children }) => {
   const { novelId } = useParams();
-  const userInfo = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보 (Context 등에서 가져옴)
+  const navigate = useNavigate();
+  const userInfo = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보
 
   // 내가 쓴 소설 데이터 조회
   const { data: novel, isLoading } = useQuery({
     queryKey: ['novel', novelId],
-    queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+    queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data).catch(error => {
+      alert("존재하지 않거나 삭제된 소설입니다.");
+      navigate("/studio");
+    }),
     enabled: !!novelId
   });
 
-  if (isLoading) return <LoadingScreen text={'내 소설을 조회 중 입니다...'} />;
-
+  
   // 작성자가 아니면 홈으로 이동
   if (novel && novel.authorId !== userInfo.id) {
     alert("본인의 소설만 수정할 수 있습니다.");
     return <Navigate to="/" replace />;
   }
+  
+  if (isLoading) return <LoadingScreen text={'내 소설을 조회 중 입니다...'} />;
 
   return children;
 };
