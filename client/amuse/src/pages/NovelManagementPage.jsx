@@ -5,8 +5,9 @@ import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plu
 import novelAPI from "../api/novelAPI";
 import { useQuery } from "@tanstack/react-query";
 import { getServerBaseUrl } from "../api/converter";
-import CoverImageDragger from "../components/CoverImageDragger";
 import { CoverImageField } from "../components/CoverImageField";
+import { useForm, Controller, Watch } from 'react-hook-form';
+import { toast } from "sonner";
 
 export function NovelManagementPage() {
   const { novelId } = useParams(); // url의 novelId 얻어오기
@@ -17,15 +18,16 @@ export function NovelManagementPage() {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
-    coverImageUrl: '',
+    coverImageUrl: null,
     coverImagePosY: 0,
-    tags : [],
+    tags: [],
     isShared: false,
     isDelete: false,
     isAffinityModeEnabled: false, // 여기까지 novel 테이블용
     profileImageUrl: '',
+    profileImagePosY: 0,
     statusMessage: '' // character 테이블 용
-  });
+  }); // 삭제 확인
 
   // <data fetch>
   const { data: novel, isLoading: isNovelLoading, isError } = useQuery({
@@ -34,6 +36,26 @@ export function NovelManagementPage() {
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5
   });
+
+  // RHF
+  const { register, handleSubmit, control, reset, watch, setValue, formState: { dirtyFields, isSubmitting } } = useForm({
+    defaultValues: {
+      title: novel.title,
+      description: novel.description,
+      coverImageUrl: novel.coverImageUrl,
+      coverImagePosY: novel.coverImagePosY,
+      tags: novel.tags,
+      isShared: novel.shared,
+      isDelete: novel.delete,
+      isAffinityModeEnabled: novel.affinityModeEnabled,
+      profileImageUrl: novel.characters.find((c) => c.role == 'MAIN').profileImageUrl,
+      profileImagePosY: novel.characters.find((c) => c.role == 'MAIN').profileImagePosY,
+      statusMessage: novel.characters.find((c) => c.role == 'MAIN').statusMessage
+    }
+  });
+
+  const allValues = watch(); // RHF의 모든 값
+  const coverImageUrl = watch("coverImageUrl"); // RHF 의 coverImageUrl 값
 
   // useEffect
   useEffect(() => {
@@ -44,7 +66,7 @@ export function NovelManagementPage() {
         description: novel.description,
         coverImageUrl: novel.coverImageUrl,
         coverImagePosY: novel.coverImagePosY,
-        tags : novel.tags,
+        tags: novel.tags,
         isShared: novel.shared,
         isDelete: novel.delete,
         isAffinityModeEnabled: novel.affinityModeEnabled,
@@ -53,11 +75,11 @@ export function NovelManagementPage() {
         statusMessage: novel.characters.find((c) => c.role == 'MAIN').statusMessage
       });
     }
-  }, []);
+  }, []); // 삭제확인
 
   // <hadler>
   // 토글 전용 핸들러
-  const handleToggleChange = (name, value) => {
+  const handleArgsChange = (name, value) => {
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -66,7 +88,7 @@ export function NovelManagementPage() {
 
   // input 전용 핸들러
   const handleChange = (e) => {
-    const {name, value} = e.target;
+    const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
       [name]: value
@@ -74,7 +96,11 @@ export function NovelManagementPage() {
   }
 
   const saveSettingNovel = () => {
-    console.log(formData);
+    console.log(allValues);
+    console.log(coverImageUrl);
+    if (formData.coverImageUrl instanceof File) {
+      console.log('새사진')
+    }
   }
 
   if (isNovelLoading) return <p>Loading...</p>;
@@ -89,7 +115,7 @@ export function NovelManagementPage() {
             <span>스튜디오로 돌아가기</span>
           </button>
           <button onClick={saveSettingNovel}
-          className="bg-[#FB7185] hover:bg-[#e15b6f] px-6 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-[#FB7185]/20">
+            className="bg-[#FB7185] hover:bg-[#e15b6f] px-6 py-2 rounded-lg font-bold flex items-center gap-2 shadow-lg shadow-[#FB7185]/20">
             <Save size={18} /> 변경사항 저장
           </button>
         </header>
@@ -128,17 +154,54 @@ export function NovelManagementPage() {
                     <h4 className="font-bold text-lg">소설 공개 여부</h4>
                     <p className="text-[#94A3B8]">이 설정을 켜면 모든 사용자가 당신의 소설을 읽을 수 있습니다.</p>
                   </div>
-                  <Toggle name="isShared" isEnabled={formData.isShared} onChange={handleToggleChange} />
+                  <Controller
+                    name="isShared"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <Toggle name="isShared" isEnabled={value} onChange={(key, val) => { onChange(val) }} />
+                    )}
+                  />
                 </div>
 
                 <div className="space-y-6">
-                  <CoverImageField 
-                    imageUrl={getServerBaseUrl(formData.coverImageUrl)} 
-                    posY={formData.coverImagePosY}
-                    onDataChange={handleToggleChange}/>
-                  <InputField label="작품 제목" name='title' value={formData.title} onChange={() => { }} />
-                  <TextAreaField label="작품 설명" name='description' value={formData.description} onChange={() => { }} />
-                  <TagField name='tags' label="태그 관리" tags={formData.tags} />
+                  <Controller
+                    name="coverImagePosY" // 이 컨트롤러가 관리할 메인 데이터
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <CoverImageField
+                        imageUrl={coverImageUrl}
+                        posY={value}
+                        onDataChange={(key, val) => {
+                          if (key === 'coverImagePosY') {
+                            onChange(val);
+                          } else if (key === 'coverImageUrl') {
+                            setValue('coverImageUrl', val, { shouldDirty: true });
+                          }
+                        }}
+                      />
+                    )}
+                  />
+                  <Controller
+                    name="title"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <InputField label="작품 제목" name='title' value={value} onChange={(e) => onChange(e.target.value)} />
+                    )}
+                  />
+                  <Controller
+                    name="description"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <TextAreaField label="작품 설명" name='description' value={value} onChange={(e) => onChange(e.target.value)} />
+                    )}
+                  />
+                  <Controller
+                    name="tags"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <TagField label="태그 관리" name='tags' tags={value} onChange={(key, val) => { onChange(val) }} />
+                    )}
+                  />
                 </div>
               </div>
             )}
@@ -149,7 +212,13 @@ export function NovelManagementPage() {
                   <h2 className="text-2xl font-bold flex items-center gap-2">
                     <MessageCircle className="text-[#FB7185]" /> 호감도 데이트 모드
                   </h2>
-                  <Toggle isEnabled={novel.affinityModeEnabled} onToggle={() => { }} color="#FB7185" />
+                  <Controller
+                    name="isAffinityModeEnabled"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <Toggle name="isAffinityModeEnabled" isEnabled={value} onChange={(key, val) => { onChange(val) }} />
+                    )}
+                  />
                 </div>
 
                 <p className="text-[#94A3B8] bg-[#0f172a] p-4 rounded-lg border-l-4 border-[#FB7185]">
@@ -202,119 +271,64 @@ export function NovelManagementPage() {
   );
 }
 
-const CoverImgField = ({ label, name, value, onChange }) => {
-  const fileInputRef = useRef(null);
-
-  const handleButtonClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // 실제 프로젝트에서는 여기서 서버로 이미지 업로드 API를 호출하고
-      // 반환된 URL을 onChange로 넘겨주는 것이 정석입니다.
-      // 지금은 로컬에서 미리보기를 위해 임시 URL을 생성해 넘깁니다.
-      const previewUrl = URL.createObjectURL(file);
-      onChange(name, previewUrl);
-    }
-  };
-
-  const handleRemoveImage = () => {
-    onChange(name, ''); // 이미지 제거
-  };
-
-  return (
-    <div className="space-y-3">
-      <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
-      
-      <div className="relative group w-full aspect-[3/4] md:w-80 rounded-2xl overflow-hidden bg-[#0f172a] border-2 border-dashed border-[#334155] hover:border-[#FB7185] transition-all">
-        {value ? (
-          <>
-            <img 
-              src={getServerBaseUrl(value)} 
-              alt="Cover Preview" 
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-            />
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={handleButtonClick}
-                className="p-2 bg-[#FB7185] text-white rounded-full hover:bg-[#e15b6f] transition-colors shadow-lg"
-              >
-                <Camera size={20} />
-              </button>
-              <button
-                type="button"
-                onClick={handleRemoveImage}
-                className="p-2 bg-slate-800 text-white rounded-full hover:bg-slate-700 transition-colors shadow-lg"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </>
-        ) : (
-          <button
-            type="button"
-            onClick={handleButtonClick}
-            className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#475569] hover:text-[#FB7185] transition-colors"
-          >
-            <ImageIcon size={40} strokeWidth={1.5} />
-            <span className="text-sm font-medium">커버 이미지 업로드</span>
-          </button>
-        )}
-
-        {/* 숨겨진 File Input */}
-        <input
-          type="file"
-          ref={fileInputRef}
-          onChange={handleFileChange}
-          accept="image/*"
-          className="hidden"
-        />
-      </div>
-      <p className="text-xs text-[#475569]">추천 비율 16:9 (최대 5MB)</p>
-    </div>
-  );
-};
-
-
-
-
 const Toggle = ({ isEnabled, name, onChange, color = 'bg-emerald-500' }) => (
-  <button onClick={() => onChange(name, !isEnabled)} className={`w-14 h-7 rounded-full relative transition-colors ${isEnabled ? color : 'bg-slate-600'}`}>
+  <button type="button" onClick={() => onChange(name, !isEnabled)} className={`w-14 h-7 rounded-full relative transition-colors ${isEnabled ? color : 'bg-slate-600'}`}>
     <div className={`absolute top-1 w-5 h-5 bg-white rounded-full transition-all ${isEnabled ? 'left-8' : 'left-1'}`} />
   </button>
 );
 
-const InputField = ({ label, value, name, placeholder }) => (
+const InputField = ({ label, value, name, placeholder, onChange }) => (
   <div className="space-y-2">
     <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
-    <input type="text" value={value} placeholder={placeholder} className="w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none" />
+    <input
+      type="text"
+      name={name}
+      value={value}
+      onChange={onChange}
+      placeholder={placeholder}
+      className="w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none" />
   </div>
 );
 
-const TextAreaField = ({ label, value, name }) => (
+const TextAreaField = ({ label, value, name, onChange }) => (
   <div className="space-y-2">
     <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
-    <textarea rows="4" value={value} className="w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none resize-none" />
+    <textarea
+      rows="4"
+      name={name}
+      onChange={onChange}
+      value={value}
+      className="w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none resize-none" />
   </div>
 );
 
 const TagField = ({ label, tags, onChange, name }) => {
   const [inputValue, setInputValue] = useState('');
 
-  // 태그 추가 로직
+  // 태그 추가 핸들러
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault(); // 폼 제출 방지
+
+      if (tags.length >= 3) {
+        toast("⚠ 태그는 3개까지만 등록 가능합니다!", {
+          style: {
+            background: '#1e293b',
+            color: '#F1F5F9',
+            border: '#1e293b'
+          }
+        })
+        setInputValue("");
+        return;
+      }
       addTag();
     }
   };
 
+  // 태그 추가 함수
   const addTag = () => {
     const trimmedValue = inputValue.trim();
-    
+
     // 중복 방지 및 빈 값 방지
     if (trimmedValue && !tags.includes(trimmedValue)) {
       const newTags = [...tags, trimmedValue];
@@ -332,12 +346,11 @@ const TagField = ({ label, tags, onChange, name }) => {
   return (
     <div className="space-y-2">
       <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
-      
+
       <div className="flex flex-wrap gap-2 p-3 bg-[#0f172a] border border-[#334155] rounded-xl focus-within:border-[#FB7185] transition-all">
-        {/* 기존 태그 리스트 */}
         {tags?.map((tag, index) => (
-          <span 
-            key={index} 
+          <span
+            key={index}
             className="flex items-center gap-1 px-3 py-1 bg-[#1e293b] border border-[#FB7185]/30 text-[#F1F5F9] text-sm rounded-full group"
           >
             #{tag}
@@ -351,7 +364,6 @@ const TagField = ({ label, tags, onChange, name }) => {
           </span>
         ))}
 
-        {/* 태그 입력창 */}
         <div className="flex-1 min-w-[120px] flex items-center gap-2">
           <input
             type="text"
