@@ -35,9 +35,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * 
- */
+
 @RestController
 @RequestMapping("/api/novel")
 @Tag(name = "Novel Controller", description = "Novel API")
@@ -91,6 +89,8 @@ public class NovelController {
 	                            .profileImageUrl(c.getProfileImageUrl())
 	                            .profileImagePosY(c.getProfileImagePosY())
 	                            .statusMessage(c.getStatusMessage())
+	                            .firstSceneContent(c.getFirstSceneContent())
+	                            .firstSceneLocation(c.getFirstSceneLocation())
 	                            .build())
 	                    .toList())
 	            .lastScene(NovelResponse.SceneInfoDTO.builder()

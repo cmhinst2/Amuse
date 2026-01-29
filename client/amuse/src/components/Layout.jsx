@@ -18,6 +18,8 @@ import novelAPI from "../api/novelAPI";
 import { LoadingScreen } from "./Spinner";
 import { Library } from "../pages/Libaray";
 import { NovelManagementPage } from "../pages/NovelManagementPage";
+import { MuseChat } from "../pages/MuseChat";
+import { MyMuseList } from "../pages/MyMuseList";
 
 
 export default function Layout() {
@@ -47,6 +49,8 @@ export default function Layout() {
                     <Route path="/studio/write" element={<StudioWriteSetting />} />
                     <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
                     <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
+                    <Route path="/muse" element={<MyMuseList />} />
+                    <Route path="/muse/:novelId/chat/:characterId" element={<MuseChat />} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />

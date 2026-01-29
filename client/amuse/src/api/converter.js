@@ -1,3 +1,5 @@
+import { useCallback } from "react";
+
 /**
 * 한글 받침 여부에 따라 조사를 선택해주는 함수
 * @param {string} name - 이름
@@ -26,4 +28,24 @@ export const formatCount = (count) => {
   if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
   if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
   return count;
+};
+
+// textarea 창 도우미 버튼 핸들러
+export const handleAddParentheses = (ref, setUserInput) => {
+  const textarea = ref.current;
+  if (!textarea) return;
+  
+  const { selectionStart: start, selectionEnd: end } = textarea;
+  setUserInput((prev) => {
+    // 현재 입력된 전체 텍스트(prev)에서 커서 위치를 기준으로 분할 삽입
+    const before = prev.substring(0, start);
+    const after = prev.substring(end);
+    return before + '()' + after;
+  });
+
+  // 커서를 괄호 사이()로 이동
+  setTimeout(() => {
+    textarea.focus();
+    textarea.setSelectionRange(start + 1, start + 1);
+  }, 0);
 };

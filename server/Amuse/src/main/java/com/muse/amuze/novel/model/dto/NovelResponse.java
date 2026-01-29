@@ -59,6 +59,8 @@ public class NovelResponse {
 		private String profileImageUrl; // 프로필 이미지(호감도 채팅용)
 		private int profileImagePosY; // 프로필 이미지 좌표
 		private String statusMessage; // 프로필 상태메시지(호감도 채팅용)
+		private String firstSceneContent; // 첫장면 서사(호감도 채팅용)
+		private String firstSceneLocation; // 첫장면 위치(호감도 채팅용)
 	}
 
 	@Getter

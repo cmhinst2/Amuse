@@ -487,6 +487,10 @@ public class NovelServiceImpl implements NovelService {
 				mainChar.setStatusMessage(request.getStatusMessage());
 			if (request.getProfileImagePosY() != null)
 				mainChar.setProfileImagePosY(request.getProfileImagePosY());
+			if (request.getFirstSceneContent() != null) 
+				mainChar.setFirstSceneContent(request.getFirstSceneContent());
+			if (request.getFirstSceneLocation() != null) 
+				mainChar.setFirstSceneLocation(request.getFirstSceneLocation());
 
 			MultipartFile profileImage = request.getProfileImageUrl();
 			String profileRename = null;

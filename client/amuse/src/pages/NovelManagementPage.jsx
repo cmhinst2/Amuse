@@ -8,6 +8,7 @@ import { CoverImageField } from "../components/CoverImageField";
 import { useForm, Controller, Watch } from 'react-hook-form';
 import { toast } from "sonner";
 import ProfileImageField from "../components/ProfileImageField";
+import { getJosa } from "../api/converter";
 
 export function NovelManagementPage() {
   const { novelId } = useParams(); // url의 novelId 얻어오기
@@ -41,7 +42,9 @@ export function NovelManagementPage() {
       mainCharName: novel.characters.find((c) => c.role == 'MAIN').name,
       profileImageUrl: novel.characters.find((c) => c.role == 'MAIN').profileImageUrl,
       profileImagePosY: novel.characters.find((c) => c.role == 'MAIN').profileImagePosY,
-      statusMessage: novel.characters.find((c) => c.role == 'MAIN').statusMessage
+      statusMessage: novel.characters.find((c) => c.role == 'MAIN').statusMessage,
+      firstSceneContent: novel.characters.find((c) => c.role == 'MAIN').firstSceneContent || '',
+      firstSceneLocation: novel.characters.find((c) => c.role == 'MAIN').firstSceneLocation || ''
     }
   });
 
@@ -244,7 +247,7 @@ export function NovelManagementPage() {
                   name="description"
                   control={control}
                   render={({ field: { onChange, value } }) => (
-                    <TextAreaField label="작품 설명" name='description' value={value} onChange={(e) => onChange(e.target.value)} />
+                    <TextAreaField label="작품 설명" name='description' placeholder='작품 설명을 작성해주세요.' value={value} onChange={(e) => onChange(e.target.value)} />
                   )}
                 />
                 <Controller
@@ -308,6 +311,29 @@ export function NovelManagementPage() {
                           onChange={(e) => onChange(e.target.value)} />
                       )}
                     />
+                    <Controller
+                      name="firstSceneContent"
+                      control={control}
+                      render={({ field: { onChange, value } }) => (
+                        <TextAreaField 
+                          label="첫 장면 작성"
+                          placeholder={`<예시>\n(${getJosa(mainCharName,'이','가')} 당황한 {사용자}의 손목을 잡으며 멈춰세운다.) \n"어디 가려고?"`}
+                          value={value} 
+                          name="firstSceneContent" 
+                          onChange={(e) => onChange(e.target.value)} />
+                        )}
+                      />
+                    <Controller
+                      name="firstSceneLocation"
+                      control={control}
+                      render={({ field: { onChange, value } }) => (
+                        <InputField label="첫 장면 위치"
+                          value={value}
+                          placeholder="캐릭터와 처음 만날 위치를 작성해주세요."
+                          name='firstSceneLocation'
+                          onChange={(e) => onChange(e.target.value)} />
+                      )}
+                    />
                   </div>
                 )}
               </div>
@@ -354,10 +380,11 @@ const InputField = ({ label, value, name, placeholder, onChange }) => (
   </div>
 );
 
-const TextAreaField = ({ label, value, name, onChange }) => (
+const TextAreaField = ({ label, value, name, onChange, placeholder }) => (
   <div className="space-y-2">
     <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
     <textarea
+      placeholder={placeholder}
       rows="4"
       name={name}
       onChange={onChange}

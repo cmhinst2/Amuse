@@ -68,6 +68,13 @@ public class Character extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String statusMessage;
     
+    @Column(columnDefinition = "TEXT")
+    private String firstSceneContent;
+    
+    @Column(columnDefinition = "TEXT")
+    private String firstSceneLocation;
+   
+    
     // 호감도 계산
     public void updateAffinity(int delta) {
     	// 현재 등급에 따른 하한선

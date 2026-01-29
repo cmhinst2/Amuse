@@ -7,7 +7,7 @@ import { Sidebar } from "../components/Form";
 import { Check, Heart, Loader2, Menu, PenLine, RotateCcw, Sparkles, SquarePen, Type, X } from "lucide-react";
 import { LoadingScreen } from "../components/Spinner";
 import { FormatContent } from "../components/Common";
-import { getJosa } from "../api/converter";
+import { getJosa, handleAddParentheses } from "../api/converter";
 import { useTypingEffect } from "../api/useTypingEffect";
 import { toast } from 'sonner';
 
@@ -430,22 +430,6 @@ export function StudioWriteContent() {
     setEditInput(scene.content);
   }
 
-  // textarea 창 도우미 버튼 핸들러
-  const handleAddParentheses = useCallback(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-    const { selectionStart: start, selectionEnd: end } = textarea;
-    setUserInput((prev) => {
-      // 현재 입력된 전체 텍스트(prev)에서 커서 위치를 기준으로 분할 삽입
-      const before = prev.substring(0, start);
-      const after = prev.substring(end);
-      return before + '()' + after;
-    });
-    setTimeout(() => {
-      textarea.focus();
-      textarea.setSelectionRange(start + 1, start + 1);
-    }, 0);
-  }, []);
 
   // 로딩 중 스피너
   if (isNovelLoading || isScenesLoading) return <LoadingScreen text={mainCharacter.name ? `${getJosa(mainCharacter.name, "을", "를")} 불러오는 중입니다...` : "세계관을 불러오는 중입니다..."} />
@@ -527,7 +511,8 @@ export function StudioWriteContent() {
               isEditPending={isEditPending}
               isAutoMode={isAutoMode}
               setIsAutoMode={setIsAutoMode}
-              onAddParentheses={handleAddParentheses}
+              setUserInput={setUserInput}
+              textareaRef={textareaRef}
             />
 
             <EditorInput
@@ -659,14 +644,15 @@ const SceneArticle = (props) => {
 };
 
 // 조건부 툴바 컴포넌트
-const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, onAddParentheses, isRegenPending }) => {
+const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, textareaRef, setUserInput, isRegenPending }) => {
   const isPending = isNewScenePending || isEditPending || isRegenPending;
 
   if (!isPending)
-    return (<section className="flex items-center gap-2 mb-2">
+    return (
+    <section className="flex items-center gap-2 mb-2">
       {!isAutoMode && (
         <button
-          onClick={onAddParentheses}
+          onClick={() => handleAddParentheses(textareaRef, setUserInput)}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-[#334155] bg-[#1e293b] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#F1F5F9]/30 transition-all animate-fadeIn"
         >
           <Type size={14} />

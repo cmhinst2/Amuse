@@ -22,4 +22,6 @@ public class NovelSettingRequest {
     private MultipartFile profileImageUrl;
     private Integer profileImagePosY;
     private String statusMessage;
+    private String firstSceneContent;
+    private String firstSceneLocation;
 }
