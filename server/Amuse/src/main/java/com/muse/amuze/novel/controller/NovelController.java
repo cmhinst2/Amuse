@@ -3,10 +3,10 @@ package com.muse.amuze.novel.controller;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -14,15 +14,16 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
-import com.muse.amuze.novel.model.dto.NovelResponseDTO;
+import com.muse.amuze.novel.model.dto.NovelResponse;
 import com.muse.amuze.novel.model.dto.NovelSettingRequest;
+import com.muse.amuze.novel.model.dto.NovelUserInputRequest;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
-import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Character;
 import com.muse.amuze.novel.model.entity.Novel;
 import com.muse.amuze.novel.model.entity.StoryScene;
@@ -69,12 +70,12 @@ public class NovelController {
 	 * @return
 	 */
 	@GetMapping("{novelId:[0-9]+}")
-	public ResponseEntity<NovelResponseDTO> getNovel(@PathVariable("novelId") Long novelId) {
+	public ResponseEntity<NovelResponse> getNovel(@PathVariable("novelId") Long novelId) {
 		Novel novel = novelService.findNovelById(novelId);
 		List<Character> characters = characterService.findByNovelId(novelId);
 		StoryScene lastScene = novelService.findLastSceneByNovelId(novelId);
 		
-		return ResponseEntity.ok(NovelResponseDTO.builder()
+		return ResponseEntity.ok(NovelResponse.builder()
 	            .id(novel.getId())
 	            .title(novel.getTitle())
 	            .description(novel.getDescription())
@@ -82,7 +83,7 @@ public class NovelController {
 	            .coverImagePosY(novel.getCoverImagePosY())
 	            .totalSummary(novel.getTotalSummary())
 	            .characters(characters.stream()
-	                    .map(c -> NovelResponseDTO.CharacterInfoDTO.builder()
+	                    .map(c -> NovelResponse.CharacterInfoDTO.builder()
 	                            .id(c.getId())
 	                            .name(c.getName())
 	                            .role(c.getRole())
@@ -92,7 +93,7 @@ public class NovelController {
 	                            .statusMessage(c.getStatusMessage())
 	                            .build())
 	                    .toList())
-	            .lastScene(NovelResponseDTO.SceneInfoDTO.builder()
+	            .lastScene(NovelResponse.SceneInfoDTO.builder()
 	                    .id(lastScene.getId())
 	                    .content(lastScene.getAiOutput())
 	                    .sequenceOrder(lastScene.getSequenceOrder())
@@ -106,13 +107,12 @@ public class NovelController {
 	            .build());
 	}
 	
-	
 	/** 다음 장면 생성하기(AI)
 	 * @param novelRequest : {content: "", lastSceneId : 1, mode: "AUTO", novelId: 1}
 	 * @return
 	 */
 	@PostMapping("generate")
-	public ResponseEntity<StorySceneResponse> generateNextScene(@RequestBody UserNovelRequest novelRequest) {
+	public ResponseEntity<StorySceneResponse> generateNextScene(@RequestBody NovelUserInputRequest novelRequest) {
 		StorySceneResponse response = novelService.generateNextScene(novelRequest);
         return ResponseEntity.ok(response);
 	}
@@ -123,7 +123,7 @@ public class NovelController {
 	 * @throws Exception
 	 */
 	@PostMapping("regenerate")
-	public ResponseEntity<StorySceneResponse> reGeneratedScene(@RequestBody UserNovelRequest novelRequest) throws Exception{
+	public ResponseEntity<StorySceneResponse> reGeneratedScene(@RequestBody NovelUserInputRequest novelRequest) throws Exception{
 		StorySceneResponse response = novelService.regenerateScene(novelRequest);
         return ResponseEntity.ok(response);
 	}
@@ -143,9 +143,23 @@ public class NovelController {
 	 * @return
 	 */
 	@GetMapping("list/{userId}")
-	public ResponseEntity<List<NovelResponseDTO>> getMyNovelList(@PathVariable("userId") int userId) {
-		List<NovelResponseDTO> novelList = novelService.getMyNovelList(userId);
+	public ResponseEntity<List<NovelResponse>> getMyNovelList(@PathVariable("userId") int userId) {
+		List<NovelResponse> novelList = novelService.getMyNovelList(userId);
 		return ResponseEntity.ok(novelList);
+	}
+	
+
+	/** 도서관 소설 목록 조회 - 정렬
+	 * @param order
+	 * @return
+	 */
+	@GetMapping("list")
+	public ResponseEntity<Page<NovelResponse>> getNovelListSortByAny(@RequestParam(name = "order", defaultValue = "latest") String order,
+																	    @RequestParam(name = "page", defaultValue = "0") int page,
+																	    @RequestParam(name = "size", defaultValue = "12") int size) {
+		Page<NovelResponse> novels = novelService.getNovelListSortByAny(order, page, size);
+		log.debug("novels :: {}", novels);
+        return ResponseEntity.ok(novels);
 	}
 	
 	
@@ -155,7 +169,7 @@ public class NovelController {
 	 * @throws Exception
 	 */
 	@PostMapping("editScene")
-	public ResponseEntity<StorySceneResponse> generateEditScene(@RequestBody UserNovelRequest novelRequest) throws Exception{
+	public ResponseEntity<StorySceneResponse> generateEditScene(@RequestBody NovelUserInputRequest novelRequest) throws Exception{
 		StorySceneResponse response = novelService.generateEditScene(novelRequest);
         return ResponseEntity.ok(response);
 	}

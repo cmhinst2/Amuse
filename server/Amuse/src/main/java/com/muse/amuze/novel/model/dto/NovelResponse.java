@@ -20,21 +20,22 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class NovelResponseDTO {
+public class NovelResponse {
 	private Long id;
 	private String title; // 제목
 	private String description; // 소개글
 	private String worldSetting; // 세계관/배경 설정
 	private String totalSummary; // 지금까지의 전체 줄거리 요약
 	private String coverImageUrl; // 커버 이미지 Url
+	private int coverImagePosY; // 커버 이미지 y축 좌표값
 	private String status; // 소설 상태(PROCESS, DONE)
 	private boolean isShared; // 공유(연재) 상태
 	private SceneInfoDTO lastScene; // 가장 최근 장면 (첫 진입 시에는 첫 장면)
 	private LocalDateTime createdAt; // 생성일
 	private LocalDateTime updatedAt; // 마지막 수정일
+	private LocalDateTime shatredAt; // 공개일
 	private boolean isDelete; // 삭제 여부
 	private boolean isAffinityModeEnabled; // 호감도 모드 활성화 여부
-	private int coverImagePosY;
 
 	private int authorId; // 작성자 id
 	private String authorName; // 작성자 이름
@@ -68,8 +69,8 @@ public class NovelResponseDTO {
 		private int sequenceOrder; // 장면 순서
 	}
 
-	public static NovelResponseDTO of(Novel novel, NovelStats stats, Character mainChar) {
-	    return NovelResponseDTO.builder()
+	public static NovelResponse of(Novel novel, NovelStats stats, Character mainChar) {
+	    return NovelResponse.builder()
 	            .id(novel.getId())
 	            .authorId(novel.getAuthor().getId())
 	            .authorName(novel.getAuthor().getNickname())
@@ -77,6 +78,7 @@ public class NovelResponseDTO {
 	            .title(novel.getTitle())
 	            .description(novel.getDescription())
 	            .coverImageUrl(novel.getCoverImageUrl())
+	            .coverImagePosY(novel.getCoverImagePosY())
 	            .isShared(novel.isShared())
 	            .status(novel.getStatus())
 	            .createdAt(novel.getCreatedAt())

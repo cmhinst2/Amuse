@@ -20,8 +20,12 @@ import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.Resource;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StreamUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -31,10 +35,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.amuze.common.util.Utility;
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
-import com.muse.amuze.novel.model.dto.NovelResponseDTO;
+import com.muse.amuze.novel.model.dto.NovelResponse;
 import com.muse.amuze.novel.model.dto.NovelSettingRequest;
+import com.muse.amuze.novel.model.dto.NovelUserInputRequest;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
-import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Character;
 import com.muse.amuze.novel.model.entity.CharacterRole;
 import com.muse.amuze.novel.model.entity.Novel;
@@ -47,7 +51,6 @@ import com.muse.amuze.novel.model.repository.StorySceneRepository;
 import com.muse.amuze.user.model.entity.User;
 
 import jakarta.persistence.EntityNotFoundException;
-import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -89,6 +92,7 @@ public class NovelServiceImpl implements NovelService {
 	 * noveId에 맞는 소설 조회 서비스
 	 *
 	 */
+	@Transactional(readOnly = true)
 	@Override
 	public Novel findNovelById(Long novelId) {
 		return novelRepository.findByIdAndIsDeleteFalse(novelId)
@@ -162,6 +166,7 @@ public class NovelServiceImpl implements NovelService {
 	/**
 	 * 마지막 장면 불러오기
 	 */
+	@Transactional(readOnly = true)
 	@Override
 	public StoryScene findLastSceneByNovelId(Long novelId) {
 		return storySceneRepository.findFirstByNovelIdOrderBySequenceOrderDesc(novelId)
@@ -177,7 +182,7 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Transactional
 	@Override
-	public StorySceneResponse generateNextScene(UserNovelRequest novelRequest) {
+	public StorySceneResponse generateNextScene(NovelUserInputRequest novelRequest) {
 
 		boolean mode = false;
 		if (novelRequest.getMode().equals("AUTO"))
@@ -280,7 +285,7 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Transactional
 	@Override
-	public StorySceneResponse regenerateScene(UserNovelRequest novelRequest) throws Exception {
+	public StorySceneResponse regenerateScene(NovelUserInputRequest novelRequest) throws Exception {
 		// 기존 장면 조회
 		StoryScene scene = storySceneRepository
 				.findByNovelIdAndId(novelRequest.getNovelId(), novelRequest.getLastSceneId())
@@ -331,6 +336,7 @@ public class NovelServiceImpl implements NovelService {
 	 * 해당 소설 모든 기록 불러오기
 	 *
 	 */
+	@Transactional(readOnly = true)
 	@Override
 	public List<StorySceneResponse> getScenes(Long novelId) {
 		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
@@ -340,9 +346,9 @@ public class NovelServiceImpl implements NovelService {
 	 * userId와 일치하는 소설(삭제된 것 제외) List 조회
 	 *
 	 */
-	@Transactional
+	@Transactional(readOnly = true)
 	@Override
-	public List<NovelResponseDTO> getMyNovelList(int userId) {
+	public List<NovelResponse> getMyNovelList(int userId) {
 		List<Novel> novelList = novelRepository.findAllByAuthorIdAndIsDeleteFalse(userId);
 
 		List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
@@ -363,9 +369,49 @@ public class NovelServiceImpl implements NovelService {
 			Character mainChar = characterMap.get(novel.getId());
 
 			// DTO의 of 메서드에 함께 전달
-			return NovelResponseDTO.of(novel, stats, mainChar);
+			return NovelResponse.of(novel, stats, mainChar);
 		}).toList();
 
+	}
+
+	/**
+	 * 도서관(모든 소설 조회 - 정렬) 서비스
+	 * 
+	 * @param order
+	 * @return
+	 */
+	@Transactional(readOnly = true)
+	@Override
+	public Page<NovelResponse> getNovelListSortByAny(String order, int page, int size) {
+
+		// 정렬 조건 설정
+		Sort sort = switch (order) {
+		case "views" -> Sort.by(Sort.Direction.DESC, "ns.viewCount");
+		case "likes" -> Sort.by(Sort.Direction.DESC, "ns.likeCount");
+		default -> Sort.by(Sort.Direction.DESC, "n.sharedAt");
+		};
+
+		// Pageable 객채 생성 (페이지 0부터 시작)
+		Pageable pageable = PageRequest.of(page, size, sort);
+		
+		// Repository에서 엔티티 조회(Author FETCH JOIN)
+		Page<Novel> novelPage = novelRepository.findSharedNovels(pageable);
+		
+		List<Long> novelIds = novelPage.getContent().stream().map(Novel::getId).toList();
+		Map<Long, Character> mainCharMap = characterRepository.findMainCharactersByNovelIds(novelIds)
+		        .stream()
+		        .collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c, (a, b) -> a));
+		
+		// 엔티티를 NovelListResponse DTO로 변환
+	    return novelPage.map(novel -> {
+	        // 통계 정보 조회 (없으면 0L)
+	        NovelStats stats = novelStatsRepository.findByNovelId(novel.getId()).orElse(null);
+	        
+	        // 메인 캐릭터 정보 추출
+	        Character mainChar = mainCharMap.get(novel.getId());
+	        
+	        return NovelResponse.of(novel, stats, mainChar);
+	    });
 	}
 
 	/**
@@ -374,7 +420,7 @@ public class NovelServiceImpl implements NovelService {
 	 */
 	@Transactional
 	@Override
-	public StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception {
+	public StorySceneResponse generateEditScene(NovelUserInputRequest novelRequest) throws Exception {
 		// 해당 엔티티 조회
 		StoryScene scene = storySceneRepository
 				.findByNovelIdAndId(novelRequest.getNovelId(), novelRequest.getLastSceneId())
@@ -403,7 +449,7 @@ public class NovelServiceImpl implements NovelService {
 	}
 
 	/**
-	 * 소설 정보 업데이트 서비스
+	 * 소설 정보 업데이트 서비스 + 공개일자 업데이트 추가 (26.01.29)
 	 * 
 	 * @throws IOException
 	 * @throws IllegalStateException
@@ -416,11 +462,11 @@ public class NovelServiceImpl implements NovelService {
 
 		// null 값 제외한 일반 필드 업데이트
 		novel.updateSettings(request);
-		
+
 		// 태그 업데이트
 		if (request.getTags() != null) {
-	        novel.updateTags(request.getTags());
-	    }
+			novel.updateTags(request.getTags());
+		}
 
 		// 커버 이미지 처리
 		MultipartFile coverImage = request.getCoverImageUrl();
@@ -454,17 +500,18 @@ public class NovelServiceImpl implements NovelService {
 
 		return 1;
 	}
-	
-	/** 소설 삭제 서비스
+
+	/**
+	 * 소설 삭제 서비스
 	 *
 	 */
 	@Transactional
 	@Override
 	public int deleteNovel(Long novelId) {
 		Novel novel = novelRepository.findByIdAndIsDeleteFalse(novelId)
-	            .orElseThrow(() -> new EntityNotFoundException("소설을 찾을 수 없거나 이미 삭제되었습니다. ID: " + novelId));
+				.orElseThrow(() -> new EntityNotFoundException("소설을 찾을 수 없거나 이미 삭제되었습니다. ID: " + novelId));
 		novel.setDelete(true);
-		
+
 		return 1;
 	}
 

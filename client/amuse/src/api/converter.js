@@ -16,7 +16,14 @@ export const getJosa = (name, first, second) => {
   return lastCode > 0 ? `${name}${first}` : `${name}${second}`;
 };
 
-
+// 서버 이미지 경로 연결 반환 함수
 export const getServerBaseUrl = (path) => {
   return `http://localhost${path}`;
 }
+
+// 조회수를 K 단위로 변환하는 유틸 함수
+export const formatCount = (count) => {
+  if (count >= 1000000) return (count / 1000000).toFixed(1) + 'M';
+  if (count >= 1000) return (count / 1000).toFixed(1) + 'K';
+  return count;
+};

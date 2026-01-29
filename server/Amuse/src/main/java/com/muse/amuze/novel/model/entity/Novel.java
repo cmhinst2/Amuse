@@ -4,6 +4,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.hibernate.annotations.BatchSize;
+
 import com.muse.amuze.novel.model.dto.NovelSettingRequest;
 import com.muse.amuze.user.model.entity.User;
 
@@ -49,6 +51,7 @@ public class Novel extends BaseTimeEntity {
     @Column(name = "total_summary", columnDefinition = "TEXT")
     private String totalSummary;
 
+    @BatchSize(size = 100) // 100개 소설의 태그를 단 한 번의 쿼리로 모아서 가져오라는 설정
     @ElementCollection(fetch = FetchType.LAZY) // 컬렉션 객체임을 JPA가 알 수 있게 함
     @CollectionTable(
         name = "novel_tags",  // 테이블 이름 novel_tags
@@ -92,6 +95,13 @@ public class Novel extends BaseTimeEntity {
 	    if (request.getIsShared() != null) this.isShared = request.getIsShared();
 	    if (request.getIsDelete() != null) this.isDelete = request.getIsDelete();
 	    if (request.getIsAffinityModeEnabled() != null) this.isAffinityModeEnabled = request.getIsAffinityModeEnabled();
+	    if (request.getIsShared() != null ) {
+	    	if (this.sharedAt == null) {
+	            this.sharedAt = LocalDateTime.now();
+	        } else {
+		    	this.sharedAt = null;
+		    }
+	    } 
 	}
 	
 	public void updateTags(List<String> newTags) {

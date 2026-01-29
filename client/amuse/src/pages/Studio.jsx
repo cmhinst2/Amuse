@@ -14,14 +14,17 @@ export default function Studio() {
 
   // <Data fetch>
   // 내가 쓴 소설 목록 fetch
-  const { data: novelList = [], isLoading: isNovelListLoading, isError } = useQuery({
+  const { data: novelList = [], isLoading: isNovelListLoading, status, fetchStatus } = useQuery({
     queryKey: ['novelList', id],
     queryFn: () => novelAPI.get(`/api/novel/list/${id}`).then(res => res.data),
     enabled: !!id,
-    staleTime: 1000 * 60 * 5
+    staleTime: 1000 * 60 * 5,
   });
 
-  if (isNovelListLoading) <LoadingScreen text={`${nickname}님의 소설을 불러오는 중 입니다...`} />
+  // 만약 fetchStatus가 'paused'라면 네트워크가 끊겼거나 DB 응답이 늦을 때, 또는 데이터 로딩중일 때
+  if (fetchStatus === 'fetching' && status === 'pending' || isNovelListLoading) {
+    return <LoadingScreen text={`${nickname}님의 소설을 불러오는 중 입니다...`} />;
+  }
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
@@ -140,6 +143,8 @@ export const NovelList = ({ data, isOwner }) => {
       </div>
     )
   }
+
+  console.log(data);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
       {data.map((novel, index) => (
@@ -156,6 +161,7 @@ export const NovelList = ({ data, isOwner }) => {
                 src={getServerBaseUrl(novel.coverImageUrl)}
                 alt={novel.title}
                 className="w-full h-full object-cover object-top"
+                style={{ objectPosition: `center ${novel.coverImagePosY}%` }}
               />
             ) : (
               <div className="w-full h-full bg-[#1e293b] flex items-center justify-center border border-[#334155]">
@@ -173,8 +179,8 @@ export const NovelList = ({ data, isOwner }) => {
 
             <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
               <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md 
-                ${novel.isShared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                {novel.isShared ? '연재 중' : '비공개'}
+                ${novel.shared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                {novel.shared ? '연재 중' : '비공개'}
               </span>
               <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
                 ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>

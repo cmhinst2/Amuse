@@ -9,8 +9,6 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-import com.muse.amuze.novel.model.dto.UserNovelRequest;
-import com.muse.amuze.novel.model.entity.Novel;
 import com.muse.amuze.novel.model.entity.StoryScene;
 
 public interface StorySceneRepository extends JpaRepository<StoryScene, Long>{

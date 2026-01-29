@@ -2,13 +2,14 @@ package com.muse.amuze.novel.model.service;
 
 import java.util.List;
 
+import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.muse.amuze.novel.model.dto.NovelCreateRequest;
-import com.muse.amuze.novel.model.dto.NovelResponseDTO;
+import com.muse.amuze.novel.model.dto.NovelResponse;
 import com.muse.amuze.novel.model.dto.NovelSettingRequest;
+import com.muse.amuze.novel.model.dto.NovelUserInputRequest;
 import com.muse.amuze.novel.model.dto.StorySceneResponse;
-import com.muse.amuze.novel.model.dto.UserNovelRequest;
 import com.muse.amuze.novel.model.entity.Novel;
 import com.muse.amuze.novel.model.entity.StoryScene;
 import com.muse.amuze.user.model.entity.User;
@@ -33,13 +34,13 @@ public interface NovelService {
 	 * @param novelRequest
 	 * @return
 	 */
-	StorySceneResponse generateNextScene(UserNovelRequest novelRequest);
+	StorySceneResponse generateNextScene(NovelUserInputRequest novelRequest);
 	
 	/** 현재 장면(AI) 재생성 서비스
 	 * @param sceneId
 	 * @return
 	 */
-	StorySceneResponse regenerateScene(UserNovelRequest novelRequest) throws Exception;
+	StorySceneResponse regenerateScene(NovelUserInputRequest novelRequest) throws Exception;
 
 
 	/** 해당 소설 모든 기록 불러오기
@@ -58,13 +59,19 @@ public interface NovelService {
 	 * @param userId
 	 * @return
 	 */
-	List<NovelResponseDTO> getMyNovelList(int userId);
+	List<NovelResponse> getMyNovelList(int userId);
+
+	/** 도서관(모든 소설 조회 - 정렬) 서비스
+	 * @param order
+	 * @return
+	 */
+	Page<NovelResponse> getNovelListSortByAny(String order, int page, int size);
 
 	/** 마지막 장면 수정 서비스
 	 * @param novelRequest
 	 * @return
 	 */
-	StorySceneResponse generateEditScene(UserNovelRequest novelRequest) throws Exception;
+	StorySceneResponse generateEditScene(NovelUserInputRequest novelRequest) throws Exception;
 
 	/** 소설 설정 정보 업데이트 서비스
 	 * @param novelId
@@ -79,6 +86,7 @@ public interface NovelService {
 	 */
 	int deleteNovel(Long novelId);
 
+	
 
 
 }

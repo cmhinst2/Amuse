@@ -1,47 +1,34 @@
 import { BrowserRouter } from 'react-router-dom';
 import Layout from './components/Layout';
 import { Toaster } from 'sonner';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 function App() {
 
-  // 화면 로딩 상태
-  // const [isLoading, setIsLoading] = useState(true);
-  // const logout = useAuthStore((state) => state.logout);
-
-  // // 첫 렌더링인지 확인 (StrictMode의 두번 호출 방지)
-  // const isFirstRender = useRef(true);
-
-  // // 화면 첫 렌더링 시 토큰 유효한지 확인
-  // useEffect(() => {
-  //   async function checkAuth() {
-  //     try {
-  //       await axiosAPI.get("/api/auth/me");
-
-  //     } catch (error) {
-  //       if (error.status === 401) {
-  //         console.log("인증되지 않은 사용자 : 로그인 페이지로 이동");
-  //         localStorage.clear();
-  //         logout();
-  //       }
-  //     }
-  //   }
-
-  //   if (isFirstRender.current) {
-  //     isFirstRender.current = false;
-  //     checkAuth().finally(() => setIsLoading(false));
-  //   }
-
-  // }, []);
-
-  // if (isLoading) return null; // 리렌더링 시 깜빡임 방지
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      queries: {
+        // DB가 깨어나는 시간을 고려해 실패 시 3번까지 재시도합니다.
+        retry: 3,
+        retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+        // Amuse 앱 배경색과 어울리는 로딩 처리를 위해 staleTime 조절
+        staleTime: 1000 * 60 * 5,
+      },
+    },
+  });
 
   return (
-    <BrowserRouter>
-      <Layout />
-      <Toaster
-        theme="dark"
-        position="top-center"
-      />
-    </BrowserRouter>
+    <QueryClientProvider client={queryClient}>
+      <BrowserRouter>
+        <Layout />
+        <Toaster
+          theme="dark"
+          position="top-center"
+          toastOptions={{
+            style: { background: '#1e293b', color: '#F1F5F9', border: '1px solid #334155' },
+          }}
+        />
+      </BrowserRouter>
+    </QueryClientProvider>
   )
 }
 

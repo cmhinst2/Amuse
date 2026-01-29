@@ -13,7 +13,7 @@ import lombok.ToString;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserNovelRequest {
+public class NovelUserInputRequest {
     private Long novelId;      // 소설 ID
     private String mode;       // "AUTO" 또는 "USER"
     private String content;    // 유저 입력값

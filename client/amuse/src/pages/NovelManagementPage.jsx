@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Sidebar } from "../components/Form";
 import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plus, ImageIcon } from "lucide-react";
 import novelAPI from "../api/novelAPI";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoverImageField } from "../components/CoverImageField";
 import { useForm, Controller, Watch } from 'react-hook-form';
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import ProfileImageField from "../components/ProfileImageField";
 export function NovelManagementPage() {
   const { novelId } = useParams(); // url의 novelId 얻어오기
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   // <states>
   const [activeTab, setActiveTab] = useState('basic'); // 'basic', 'dating', 'danger'
@@ -50,9 +51,12 @@ export function NovelManagementPage() {
   const profileImageUrl = watch("profileImageUrl"); // RHF 의 profileImageUrl 상태값
 
   // <mutate>
+  // 소설 설정 업데이트 요청
   const { mutate: updateNovelSetting } = useMutation({
     mutationFn: (formData) => novelAPI.patch(`/api/novel/${novelId}/setting`, formData),
     onSuccess: (updatedData) => {
+      queryClient.invalidateQueries({ queryKey: ['novelList'] }); // 설정 변경 시 이전 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ['novelDetail', novelId] }); // 설정 변경 시 이전 캐시 무효화
       reset(getValues()); // 데이터를 다시 초기값으로 설정 dirtyFields 깨끗히 비움
       toast("소설 설정 업데이트 성공!", {
         style: {
@@ -72,9 +76,13 @@ export function NovelManagementPage() {
     }
   });
 
+  // 소설 삭제 요청
   const { mutate: deleteNovel } = useMutation({
     mutationFn: (id) => novelAPI.patch(`/api/novel/${id}/delete`),
-    onSuccess: () => navigate("/studio"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['novelDetail', novelId] });
+      navigate("/studio");
+    },
     onError: (error) => {
       console.log(error);
       toast("💥 삭제 중 에러 발생!");
@@ -153,11 +161,10 @@ export function NovelManagementPage() {
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
       <Sidebar />
       <main className="flex-1 overflow-y-auto custom-scrollbar">
-        <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
-          <button onClick={() => navigate("/studio")} className="flex items-center gap-2 text-[#94A3B8] hover:text-white transition-colors">
-            <ArrowLeft size={20} />
-            <span>스튜디오로 돌아가기</span>
-          </button>
+        <header className="sticky top-0 z-10 flex h-[70px] items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
+          <h1 className="text-xl font-black text-[#FB7185] tracking-tight shrink-0">
+              내 작품 관리
+            </h1>
           {activeTab === 'danger' ? <></> :
             <button
               onClick={handleSubmit(saveSettingNovel)}
