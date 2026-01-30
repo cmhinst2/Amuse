@@ -14,12 +14,13 @@ import Event from "../pages/Event";
 import StudioWriteSetting from "../pages/StudioWriteSetting";
 import { StudioWriteContent } from "../pages/StudioWriteContent";
 import { useQuery } from "@tanstack/react-query";
-import novelAPI from "../api/novelAPI";
+import amuseAPI from "../api/amuseAPI";
 import { LoadingScreen } from "./Spinner";
 import { Library } from "../pages/Libaray";
 import { NovelManagementPage } from "../pages/NovelManagementPage";
 import { MuseChat } from "../pages/MuseChat";
 import { MyMuseList } from "../pages/MyMuseList";
+import { useEffect } from "react";
 
 
 export default function Layout() {
@@ -50,7 +51,7 @@ export default function Layout() {
                     <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
                     <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
                     <Route path="/muse" element={<MyMuseList />} />
-                    <Route path="/muse/:novelId/chat/:characterId" element={<MuseChat />} />
+                    <Route path="/muse/:novelId/chat/:userId" element={<ChatAuthGuard><MuseChat /></ChatAuthGuard>} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />
@@ -78,30 +79,107 @@ export default function Layout() {
   );
 }
 
-
+// 소설 작성자 판별 가드 컴포넌트
 const NovelAuthorGuard = ({ children }) => {
   const { novelId } = useParams();
   const navigate = useNavigate();
   const userInfo = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보
 
-  // 내가 쓴 소설 데이터 조회
-  const { data: novel, isLoading } = useQuery({
+  const { data: novel, isLoading, isError } = useQuery({
     queryKey: ['novel', novelId],
-    queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data).catch(error => {
-      alert("존재하지 않거나 삭제된 소설입니다.");
-      navigate("/studio");
-    }),
-    enabled: !!novelId
+    queryFn: async () => {
+      const res = await amuseAPI.get(`/api/novel/${novelId}`);
+      return res.data;
+    },
+    retry: false,
+    staleTime: 1000 * 60 * 60,
+    enabled: !!novelId && !!userInfo?.id,
   });
 
-  
-  // 작성자가 아니면 홈으로 이동
-  if (novel && novel.authorId !== userInfo.id) {
-    alert("본인의 소설만 수정할 수 있습니다.");
-    return <Navigate to="/" replace />;
-  }
-  
+  console.log(novel);
+  useEffect(() => {
+    if (isError) {
+      alert("존재하지 않거나 삭제된 소설입니다.");
+      navigate(-1);
+    }
+    if (novel && userInfo && novel.authorId !== userInfo.id) {
+      alert("본인의 소설만 수정할 수 있습니다.");
+      navigate(-1);
+    }
+  }, [isError, novel, userInfo, navigate]);
+
+
   if (isLoading) return <LoadingScreen text={'내 소설을 조회 중 입니다...'} />;
+
+  if (isError || !novel || novel.authorId !== userInfo.id) {
+    return null;
+  }
 
   return children;
 };
+
+// Chat 모드 판별 가드 컴포넌트
+const ChatAuthGuard = ({ children }) => {
+  const { novelId, userId } = useParams();
+  const navigate = useNavigate();
+  const { id: currentUserId } = useAuthStore((state) => state.userInfo);
+
+  // 소설 데이터 조회
+  const { data: novel, isLoading: isNovelLoading, isError: isNovelError } = useQuery({
+    queryKey: ['novel', novelId],
+    queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+    retry: false,
+    staleTime: 1000 * 60 * 60,
+    enabled: !!novelId,
+  });
+  
+  // 채팅방 존재 여부 조회 - 실제로 해당 소설(캐릭터)과 채팅방이 생성되어 있는지
+  const { data: chatRoom, isLoading: isChatLoading, isError: isChatError } = useQuery({
+    queryKey: ['muse', 'chatRoom', novelId, userId],
+    queryFn: async() => {
+      console.log("채팅방 존재 여부 조회중")
+      const resp = await amuseAPI.get(`/api/muse/check/${novelId}/${userId}`);
+      console.log(resp.data)
+      return resp.data;
+    },
+    retry: false,
+    staleTime: 1000 * 60 * 5,
+    enabled: !!novelId && userId === String(currentUserId) && !!novel,
+  });
+
+  useEffect(() => {
+    // 현재 로그인한 유저와 url 상 입력된 userId가 일치하는지 확인
+    if (userId !== String(currentUserId)) {
+      alert("잘못된 접근입니다.");
+      navigate(-1);
+      return;
+    }
+
+    // novelId의 소설이 있는지 확인
+    if (isNovelError) {
+      alert("존재하지 않거나 삭제된 소설입니다.");
+      navigate(-1);
+      return;
+    }
+
+    // novelId의 소설이 호감도 모드가 활성상태인지 확인
+    if (novel && !novel.affinityModeEnabled) {
+      alert("호감도 모드가 지원되지 않는 소설입니다!");
+      navigate('/library', { replace: true });
+      return;
+    }
+
+    // 채팅방 권한 확인
+    if (isChatError || chatRoom == '') {
+      alert("대화 기록이 없거나 접근 권한이 없습니다. 먼저 도서관에서 뮤즈와 대화하기를 진행해주세요.");
+      navigate('/library', { replace: true });
+    }
+
+  }, [userId, currentUserId, isNovelError, novel, isChatError, navigate, chatRoom]);
+
+  if (isNovelLoading || isChatLoading) {
+    return <LoadingScreen text="내 Muse와의 연결을 확인 중..." />;
+  }
+
+  return chatRoom != '' && novel?.affinityModeEnabled ? children : null;
+}

@@ -3,7 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 import { Sidebar } from "../components/Form";
-import novelAPI from '../api/novelAPI';
+import amuseAPI from '../api/amuseAPI';
 import { Plus, Shield, Trash2, UserCircle, Users } from 'lucide-react';
 
 // 세팅화면
@@ -145,7 +145,7 @@ export default function StudioWriteSetting() {
       formData.append("novelInfo", new Blob([novelInfo], { type: "application/json;charset=utf-8" }));
       if (coverFile) formData.append("coverImage", coverFile);
 
-      const response = await novelAPI.post('/api/novel/write', formData, {
+      const response = await amuseAPI.post('/api/novel/write', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       return response.data;

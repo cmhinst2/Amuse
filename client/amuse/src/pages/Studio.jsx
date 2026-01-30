@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Form";
 import { useQuery } from "@tanstack/react-query";
 import useAuthStore from "../store/authStore";
-import novelAPI from "../api/novelAPI";
+import amuseAPI from "../api/amuseAPI";
 import { LoadingScreen } from "../components/Spinner";
 import { BookPlus, Eye, Heart } from "lucide-react";
 import { useState } from "react";
@@ -16,7 +16,7 @@ export default function Studio() {
   // 내가 쓴 소설 목록 fetch
   const { data: novelList = [], isLoading: isNovelListLoading, status, fetchStatus } = useQuery({
     queryKey: ['novelList', id],
-    queryFn: () => novelAPI.get(`/api/novel/list/${id}`).then(res => res.data),
+    queryFn: () => amuseAPI.get(`/api/novel/list/${id}`).then(res => res.data),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
   });

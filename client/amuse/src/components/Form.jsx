@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import useAuthStore from '../store/authStore';
-import axiosAPI from '../api/axiosAPI';
+import axiosAPI from '../api/amuseAPI';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);

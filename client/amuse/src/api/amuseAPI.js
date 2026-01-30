@@ -1,12 +1,12 @@
 import axios from "axios";
 
-const novelAPI = axios.create({
+const amuseAPI = axios.create({
   baseURL: "http://localhost/",
   withCredentials: true
 });
 
 // 요청 인터셉터 : 서버로 보내기 직전에 가로채서 헤더를 붙임
-novelAPI.interceptors.request.use(
+amuseAPI.interceptors.request.use(
   (config) => {
     // 로컬 스토리지에서 토큰 가져오기 (저장하신 위치에 맞게 수정)
     const storageData = JSON.parse(localStorage.getItem('amuse-auth-storage')); 
@@ -23,7 +23,7 @@ novelAPI.interceptors.request.use(
 );
 
 // 응답 인터셉터 : 서버에서 응답오면 가로채서 401, 403인지 검사
-novelAPI.interceptors.response.use(
+amuseAPI.interceptors.response.use(
   (response) => {
     return response;
   },
@@ -39,4 +39,4 @@ novelAPI.interceptors.response.use(
   }
 );
 
-export default novelAPI;
+export default amuseAPI;

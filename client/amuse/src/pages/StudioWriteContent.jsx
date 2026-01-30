@@ -1,7 +1,7 @@
 import { useNavigate, useParams } from "react-router-dom";
 import { motion, AnimatePresence, m } from 'framer-motion';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import novelAPI from "../api/novelAPI";
+import amuseAPI from "../api/amuseAPI";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "../components/Form";
 import { Check, Heart, Loader2, Menu, PenLine, RotateCcw, Sparkles, SquarePen, Type, X } from "lucide-react";
@@ -67,7 +67,7 @@ export function StudioWriteContent() {
   // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등 (TanStack Query)
   const { data: novelData, isLoading: isNovelLoading, isError } = useQuery({
     queryKey: ['novel', novelId],
-    queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+    queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId, // novelId가 있을 때만 실행
     staleTime: 1000 * 60 * 60, // 1시간 데이터를 유지
     gcTime: 1000 * 60 * 120,    // 2시간 후 메모리에서 삭제
@@ -76,7 +76,7 @@ export function StudioWriteContent() {
   // 이전 소설 장면 fetch
   const { data: scenes = [], isLoading: isScenesLoading } = useQuery({
     queryKey: ['novel', 'scenes', novelId],
-    queryFn: () => novelAPI.get(`/api/novel/${novelId}/scenes`).then(res => res.data),
+    queryFn: () => amuseAPI.get(`/api/novel/${novelId}/scenes`).then(res => res.data),
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5,
     select: (data) => data.map(s => {
@@ -105,7 +105,7 @@ export function StudioWriteContent() {
   // <Mutaion>
   // 새로운 신 생성 요청
   const { mutate: generateScene, isPending: isNewScenePending } = useMutation({
-    mutationFn: (payload) => novelAPI.post('/api/novel/generate', payload).then(res => res.data),
+    mutationFn: (payload) => amuseAPI.post('/api/novel/generate', payload).then(res => res.data),
     retry: (failureCount, error) => { // 서버에서 에러 발생 시 최대 2번까지 자동으로 다시 시도 
       if (error.response?.status === 500) return false; // 서버 3번 시도에도 500이라면 포기
       if (failureCount < 2) return true; // 네트워크이상, 서버응답 못하는상태 리트라이
@@ -189,7 +189,7 @@ export function StudioWriteContent() {
 
   // 마지막 신 재생성 요청
   const { mutate: reGenerateScene, isPending: isRegenPending } = useMutation({
-    mutationFn: (payload) => novelAPI.post('/api/novel/regenerate', payload).then(res => res.data),
+    mutationFn: (payload) => amuseAPI.post('/api/novel/regenerate', payload).then(res => res.data),
     onMutate: async (reSceneRequest) => {
       await queryClient.cancelQueries({ queryKey: ['novel', 'scenes', novelId] });
       const previousScenes = queryClient.getQueryData(['novel', 'scenes', novelId]);
@@ -241,7 +241,7 @@ export function StudioWriteContent() {
 
   // 마지막 신 편집 요청
   const { mutate: editGenerateScene, isPending: isEditPending } = useMutation({
-    mutationFn: (payload) => novelAPI.post('/api/novel/editScene', payload).then(res => res.data),
+    mutationFn: (payload) => amuseAPI.post('/api/novel/editScene', payload).then(res => res.data),
     onSuccess: (updatedScene) => {
       // 캐시에 저장된 데이터를 교체
       queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
@@ -262,22 +262,22 @@ export function StudioWriteContent() {
 
   // <Effects>
   // 소설 못찾았을 때
-  useEffect(() => {
-    if (isError) {
-      toast.error("소설 찾기 불가!", {
-        description: "이런 소설은 없는 것 같아요~",
-        duration: 3000,
-        style: {
-          background: '#1e293b', // Amuse 카드 배경색
-          color: '#F1F5F9',      // 메인 텍스트색
-          border: '1px solid #FB7185', // 로즈 포인트 테두리
-        },
-        // 아이콘 색상도 로즈색으로 변경
-        icon: <span className="text-[#FB7185]">⚠️</span>,
-      });
-      navigate('/studio');
-    }
-  }, [isError, navigate]);
+  // useEffect(() => {
+  //   if (isError) {
+  //     toast.error("소설 찾기 불가!", {
+  //       description: "이런 소설은 없는 것 같아요~",
+  //       duration: 3000,
+  //       style: {
+  //         background: '#1e293b', // Amuse 카드 배경색
+  //         color: '#F1F5F9',      // 메인 텍스트색
+  //         border: '1px solid #FB7185', // 로즈 포인트 테두리
+  //       },
+  //       // 아이콘 색상도 로즈색으로 변경
+  //       icon: <span className="text-[#FB7185]">⚠️</span>,
+  //     });
+  //     navigate('/studio');
+  //   }
+  // }, [isError, navigate]);
 
   // 자동 스크롤 하단 유지
   useEffect(() => {
@@ -432,7 +432,7 @@ export function StudioWriteContent() {
 
 
   // 로딩 중 스피너
-  if (isNovelLoading || isScenesLoading) return <LoadingScreen text={mainCharacter.name ? `${getJosa(mainCharacter.name, "을", "를")} 불러오는 중입니다...` : "세계관을 불러오는 중입니다..."} />
+  if (isNovelLoading || isScenesLoading) return <LoadingScreen text={`${getJosa(mainCharacter.name, "을", "를")} 불러오는 중입니다...`} />
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">

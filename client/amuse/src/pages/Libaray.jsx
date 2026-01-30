@@ -3,7 +3,7 @@ import { Sidebar } from "../components/Form";
 import useAuthStore from "../store/authStore";
 import { toast } from 'sonner';
 import { useQuery } from "@tanstack/react-query";
-import novelAPI from "../api/novelAPI";
+import amuseAPI from "../api/amuseAPI";
 import { useEffect, useState } from "react";
 import { LoadingScreen } from "../components/Spinner";
 import { formatCount, getJosa, getServerBaseUrl } from "../api/converter";
@@ -19,7 +19,7 @@ export function Library() {
 
   const { data: novelList = [], isLoading, isError, status, fetchStatus, isNovelListLoading } = useQuery({
     queryKey: ['novelList', order, page],
-    queryFn: () => novelAPI.get('api/novel/list', { params: { order, page, size: 10 } })
+    queryFn: () => amuseAPI.get('api/novel/list', { params: { order, page, size: 10 } })
       .then(res => res.data),
     staleTime: 1000 * 60 * 5,
   });
@@ -85,7 +85,7 @@ export function Library() {
 
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         {/* 정렬 헤더 */}
-        <header className="sticky top-0 z-50 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
           <div className="flex items-center gap-2 text-sm text-[#94A3B8]">
             <button onClick={() => setOrder("lastest")} className={`${order == 'lastest' && 'text-[#FB7185] font-bold'} hover:text-[#FB7185] transition-colors`}>최신순</button>
             <span className="text-[#334155]">|</span>
@@ -95,7 +95,7 @@ export function Library() {
           </div>
         </header>
 
-        <section className="p-8 space-y-8">
+        <section className="p-8 flex flex-col gap-10">
           {/* 배너 */}
           <div className="p-6 rounded-[2rem] bg-gradient-to-r from-[#1e293b] to-transparent border border-[#334155]/30 flex items-center gap-4">
             <div className="w-12 h-12 rounded-full bg-[#FB7185]/20 flex items-center justify-center text-xl">❤️</div>
@@ -154,7 +154,7 @@ export function Library() {
                     </span>
                   </div>
                 </div>
-                <div div className="mt-4 px-1" >
+                <div className="mt-4 px-1" >
                   <div className="flex flex-col">
                     <section onClick={() => navigate(`/studio/write/${novel.id}`)} className="flex items-center justify-between mb-4 cursor-pointer ">
                       <h4 className="text-xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
@@ -190,26 +190,51 @@ export function Library() {
 const NovelActionModal = ({ novel, onClose }) => {
   const navigate = useNavigate();
   const [isVisible, setIsVisible] = useState(false);
+  const { id } = useAuthStore(state => state.userInfo);
 
-  console.log(novel);
+  // 이렇게 함수안에서 해도 되나?
+  const { refetch: checkChatRoom } = useQuery({
+    queryKey: ['muse', 'chatRoom', novel.id, id],
+    queryFn: async () => {
+      const res = await amuseAPI.get(`/api/muse/check/${novel.id}/${id}`);
+      return res.data;
+    },
+    staleTime: 1000 * 60 * 5,
+    enabled: false,
+    retry: false,
+  });
 
-  useEffect(() => {
-    // 컴포넌트가 렌더링된 직후 아주 잠깐의 지연을 주어 애니메이션이 확실히 보이게 합니다.
-    const timer = setTimeout(() => setIsVisible(true), 100);
-    return () => clearTimeout(timer);
-  }, []);
+  // useEffect(() => {
+  //   // 컴포넌트가 렌더링된 직후 아주 잠깐의 지연을 주어 애니메이션이 확실히 보이게 합니다.
+  //   const timer = setTimeout(() => setIsVisible(true), 100);
+  //   return () => clearTimeout(timer);
+  // }, []);
 
-  // 1. 소설 읽기 페이지로 이동
+  // 소설 읽기 페이지로 이동
   const handleReadNovel = () => {
     navigate(`/novels/${novel.id}`);
     onClose();
   };
 
-  // 2. 채팅하기 (뮤즈 만들기) 로직
-  const handleStartChat = () => {
-    // 여기서 채팅방 존재 여부 체크 후 이동 (하단 TanStack Query 섹션 참고)
-    navigate(`/chat/setup/${novel.id}`);
-    onClose();
+  const handleCreateChatRoom = () => {
+    alert("생성하자");
+  }
+
+  // 채팅하기 (뮤즈 만들기) 로직
+  const handleStartChat = async (novel) => {
+    // 여기서 채팅방 존재 여부 체크 후 이동
+    // 채팅방 존재 여부 체크 및 호감도 모드 체크
+    const { data: chatRoom } = await checkChatRoom();
+
+    console.log("chatRoom :: ", chatRoom); // 왜 undefined 지?
+    if (chatRoom) {
+      // 기존 방으로 이동
+      navigate(`/muse/${novel.id}/chat/${id}`);
+      onClose();
+    } else {
+      // 새로 생성해주는 로직 수행
+      handleCreateChatRoom();
+    }
   };
 
   return (
@@ -226,7 +251,7 @@ const NovelActionModal = ({ novel, onClose }) => {
 
         {/* 소설 정보 헤더 */}
         <div className="p-10 pb-0 text-center">
-          <div className="relative aspect-[3/4] mb-5">
+          <div className="relative aspect-[4/5] mb-5">
             <div className="w-full h-full [filter:drop-shadow(0_10px_20px_rgba(0,0,0,0.6))]">
               <div className="relative w-full h-full bg-[#1e293b] overflow-hidden
                           [clip-path:polygon(0_0,_calc(100%_-_40px)_0,_100%_40px,_100%_100%,_40px_100%,_0_calc(100%_-_40px))]">
@@ -243,8 +268,8 @@ const NovelActionModal = ({ novel, onClose }) => {
                           transition-all duration-1000 ease-out flex flex-col justify-end p-8 text-left
                           ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
                 >
-                  <p className={`text-[#F1F5F9] text-ms leading-relaxed transition-all duration-700 delay-500
-                             ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                  <p className={`whitespace-pre-wrap break-keep text-[#F1F5F9] text-ms leading-relaxed transition-all duration-1000 delay-300
+                             ${isVisible ? '-translate-y-6 opacity-100' : 'translate-y-4 opacity-0'}`}>
                     {novel.description}
                   </p>
                 </div>
@@ -253,15 +278,23 @@ const NovelActionModal = ({ novel, onClose }) => {
             </div>
           </div>
 
-          <h2 className="text-2xl font-bold text-[#FB7185] mb-2">{novel.title}</h2>
-          <p className="text-sm text-[#94A3B8]">{novel.authorName} 작가</p>
+          <h2 className={`${novel.title.length >= 10 ? 'text-2xl' : 'text-3xl'} font-bold text-[#F1F5F9] mb-4 
+               [text-shadow:0_4px_5px_rgba(0,0,0,0.8)]
+               tracking-tight whitespace-pre-wrap break-keep`}>{novel.title}</h2>
+          <section className="flex gap-2 mb-3 justify-center">
+            {novel.tags.map((tag, idx) => (
+              <span className="cursor-pointer text-[13px] px-2 rounded-lg text-[#F1F5F9] bg-[#334155] hover:text-[#FB7185]" key={`${tag}_${idx}`}>#{tag}</span>
+            ))}
+          </section>
+          <p className="cursor-pointer text-sm text-[#94A3B8] hover:text-[#FB7185]">@{novel.authorName}</p>
+
         </div>
 
         {/* 선택 버튼 영역 */}
         <div className="p-6 flex flex-col gap-3">
           <button
             onClick={handleReadNovel}
-            className="flex items-center justify-center gap-3 w-full py-4 bg-[#334155] hover:bg-[#475569] text-[#F1F5F9] rounded-xl transition-all font-medium group"
+            className="flex items-center justify-center gap-3 w-full py-4 bg-[#4f46e5] hover:bg-[#3730a3] text-[#F1F5F9] rounded-xl transition-all font-medium group"
           >
             <BookOpen size={20} className="group-hover:scale-110 transition-transform" />
             소설 읽기
@@ -269,7 +302,7 @@ const NovelActionModal = ({ novel, onClose }) => {
 
           {novel.affinityModeEnabled &&
             <button
-              onClick={handleStartChat}
+              onClick={() => handleStartChat(novel)}
               className="flex items-center justify-center gap-3 w-full py-4 bg-[#FB7185] hover:bg-[#f43f5e] text-white rounded-xl transition-all font-bold shadow-lg shadow-rose-900/20 group"
             >
               <MessageCircle size={20} className="group-hover:animate-bounce" />
@@ -277,9 +310,11 @@ const NovelActionModal = ({ novel, onClose }) => {
             </button>}
         </div>
 
-        <div className="bg-[#0f172a]/50 py-3 text-center">
-          <p className="text-[10px] text-[#94A3B8]">메인 캐릭터와의 호감도 모드가 활성화됩니다.</p>
-        </div>
+        {novel.affinityModeEnabled &&
+          <div className="bg-[#0f172a]/50 py-3 text-center">
+            <p className="text-[12px] text-[#94A3B8]">{getJosa(novel.mainCharName, '과', '와')}의 대화에서 몰입을 위해 소설 읽기를 추천드려요💕</p>
+          </div>}
+
       </article>
     </div>
   );

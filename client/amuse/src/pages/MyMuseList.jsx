@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Form";
 import { MessageCircle, Heart, ChevronRight, Clock } from 'lucide-react';
 import { useQuery } from "@tanstack/react-query";
-import novelAPI from "../api/novelAPI";
+import amuseAPI from "../api/amuseAPI";
 import useAuthStore from "../store/authStore";
 import { LoadingScreen } from "../components/Spinner";
 
@@ -12,13 +12,11 @@ export function MyMuseList() {
 
   // <Data Fetch>
   const { data: myMuses = [], isLoading, status, fetchStatus } = useQuery({
-    queryKey: ['my-muse-list', id],
-    queryFn: () => novelAPI.get(`/api/muse/${id}`).then(res => res.data),
+    queryKey: ['muse', 'chatRoom', 'list', id],
+    queryFn: () => amuseAPI.get(`/api/muse/${id}`).then(res => res.data),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
   });
-
-  console.log(myMuses);
 
   const myMusesDummy = [
     {

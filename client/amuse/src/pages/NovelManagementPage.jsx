@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Sidebar } from "../components/Form";
 import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plus, ImageIcon } from "lucide-react";
-import novelAPI from "../api/novelAPI";
+import amuseAPI from "../api/amuseAPI";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoverImageField } from "../components/CoverImageField";
 import { useForm, Controller, Watch } from 'react-hook-form';
@@ -21,7 +21,7 @@ export function NovelManagementPage() {
   // <data fetch>
   const { data: novel, isLoading: isNovelLoading, isError } = useQuery({
     queryKey: ['novel', novelId],
-    queryFn: () => novelAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+    queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -56,7 +56,7 @@ export function NovelManagementPage() {
   // <mutate>
   // 소설 설정 업데이트 요청
   const { mutate: updateNovelSetting } = useMutation({
-    mutationFn: (formData) => novelAPI.patch(`/api/novel/${novelId}/setting`, formData),
+    mutationFn: (formData) => amuseAPI.patch(`/api/novel/${novelId}/setting`, formData),
     onSuccess: (updatedData) => {
       queryClient.invalidateQueries({ queryKey: ['novelList'] }); // 설정 변경 시 이전 캐시 무효화
       queryClient.invalidateQueries({ queryKey: ['novelDetail', novelId] }); // 설정 변경 시 이전 캐시 무효화
@@ -81,7 +81,7 @@ export function NovelManagementPage() {
 
   // 소설 삭제 요청
   const { mutate: deleteNovel } = useMutation({
-    mutationFn: (id) => novelAPI.patch(`/api/novel/${id}/delete`),
+    mutationFn: (id) => amuseAPI.patch(`/api/novel/${id}/delete`),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['novelDetail', novelId] });
       navigate("/studio");
