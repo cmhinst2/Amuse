@@ -24,10 +24,25 @@ public class MuseController {
 	
 	private final MuseService museService;
 
+	/** 
+	 * @param userId
+	 * @return
+	 */
 	@GetMapping("{userId:[0-9]+}")
 	public ResponseEntity<List<MyMuseReponse>> getMyMuseList(@PathVariable("userId") int userId) {
 		List<MyMuseReponse> myMuses = museService.getMyMuseList(userId);
-		log.debug("응답값 : {}", myMuses);
 		return ResponseEntity.ok(myMuses);
+	}
+	
+	/** 현재 로그인한 회원과 소설속 캐릭터 채팅방이 있는지 체크
+	 * @param novelId
+	 * @param userId
+	 * @return
+	 */
+	@GetMapping("check/{novelId}/{userId}")
+	public ResponseEntity<MyMuseReponse> checkChatRoomByUserId(@PathVariable("novelId") int novelId, @PathVariable("userId") int userId) {
+		MyMuseReponse reponse = museService.checkChatRoomByUserId(novelId, userId);
+		log.debug("reponse:: {}", reponse);
+		return ResponseEntity.ok(reponse);
 	}
 }

@@ -8,4 +8,6 @@ public interface MuseService {
 
 	List<MyMuseReponse> getMyMuseList(int userId);
 
+	MyMuseReponse checkChatRoomByUserId(int novelId, int userId);
+
 }

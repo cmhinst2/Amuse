@@ -29,4 +29,13 @@ public class MuseServiceImpl implements MuseService {
 		
 		return chatRoomRepository.findMyMuseListByUserId(userId);
 	}
+	
+	/** novelId, userId에 맞는 ChatRoom 조회
+	 *
+	 */
+	@Override
+	public MyMuseReponse checkChatRoomByUserId(int novelId, int userId) {
+		
+		return chatRoomRepository.findChatRoomByNovelIdAndUserId(novelId, userId);
+	}
 }
