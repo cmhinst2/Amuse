@@ -59,7 +59,7 @@ export function NovelManagementPage() {
     mutationFn: (formData) => amuseAPI.patch(`/api/novel/${novelId}/setting`, formData),
     onSuccess: (updatedData) => {
       queryClient.invalidateQueries({ queryKey: ['novelList'] }); // 설정 변경 시 이전 캐시 무효화
-      queryClient.invalidateQueries({ queryKey: ['novelDetail', novelId] }); // 설정 변경 시 이전 캐시 무효화
+      queryClient.invalidateQueries({ queryKey: ['novel', novelId] }); // 설정 변경 시 이전 캐시 무효화
       reset(getValues()); // 데이터를 다시 초기값으로 설정 dirtyFields 깨끗히 비움
       toast("소설 설정 업데이트 성공!", {
         style: {
@@ -103,6 +103,36 @@ export function NovelManagementPage() {
         formData.append(key, allValues[key]);
       }
     });
+
+    // 이미 호감도 모드일 때 또는 채팅모드를 활성화로 수정할 때  
+    if (allValues['isAffinityModeEnabled'] === true || formData.get('isAffinityModeEnabled') === 'true') {
+
+      // formData에 값이 없는데 allValues에는 있는 경우(이전 호감도 모드에서 작성해둔 내용) 보정
+      if (!formData.get('firstSceneContent') && allValues['firstSceneContent']?.trim()) {
+        formData.set('firstSceneContent', allValues['firstSceneContent']);
+      }
+      if (!formData.get('firstSceneLocation') && allValues['firstSceneLocation']?.trim()) {
+        formData.set('firstSceneLocation', allValues['firstSceneLocation']);
+      }
+
+      // 최종 값 추출 및 검사
+      const content = formData.get('firstSceneContent')?.toString().trim() || "";
+      const location = formData.get('firstSceneLocation')?.toString().trim() || "";
+      
+      if (!content || !location) {
+        toast("호감도 모드에서는 첫 장면과 장소가 필수입니다!", {
+          style: {
+            backgroundColor: '#ea4747',
+            color: '#F1F5F9'
+          }
+        });
+        return;
+      }
+    }
+
+    for (let [key, value] of formData.entries()) {
+      console.log(`${key}:`, value);
+    }
 
     if (formData.entries().next().done) {
       toast("⚠ 변경할 내용이 없습니다!", {
@@ -166,8 +196,8 @@ export function NovelManagementPage() {
       <main className="flex-1 overflow-y-auto custom-scrollbar">
         <header className="sticky top-0 z-10 flex h-[70px] items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
           <h1 className="text-xl font-black text-[#FB7185] tracking-tight shrink-0">
-              내 작품 관리
-            </h1>
+            내 작품 관리
+          </h1>
           {activeTab === 'danger' ? <></> :
             <button
               onClick={handleSubmit(saveSettingNovel)}
@@ -315,14 +345,14 @@ export function NovelManagementPage() {
                       name="firstSceneContent"
                       control={control}
                       render={({ field: { onChange, value } }) => (
-                        <TextAreaField 
+                        <TextAreaField
                           label="첫 장면 작성"
-                          placeholder={`<예시>\n(${getJosa(mainCharName,'이','가')} 당황한 {사용자}의 손목을 잡으며 멈춰세운다.) \n"어디 가려고?"`}
-                          value={value} 
-                          name="firstSceneContent" 
+                          placeholder={`<예시>\n${getJosa(mainCharName, '이', '가')} {사용자}의 손목을 잡으며 멈춰세운다. \n"어디 가려고?"`}
+                          value={value}
+                          name="firstSceneContent"
                           onChange={(e) => onChange(e.target.value)} />
-                        )}
-                      />
+                      )}
+                    />
                     <Controller
                       name="firstSceneLocation"
                       control={control}
@@ -369,27 +399,31 @@ const Toggle = ({ isEnabled, name, onChange, color = 'bg-emerald-500' }) => (
 
 const InputField = ({ label, value, name, placeholder, onChange }) => (
   <div className="space-y-2">
-    <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
+    <label className={`${label === '첫 장면 위치' ? 'text-[#FB7185]' : 'text-[#F1F5F9]'} text-sm font-semibold text-[#94A3B8]`}>
+      {label === '첫 장면 위치' ? '* ' + label : label}
+    </label>
     <input
       type="text"
       name={name}
       value={value}
       onChange={onChange}
       placeholder={placeholder}
-      className="w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none" />
+      className={`w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none`} />
   </div>
 );
 
 const TextAreaField = ({ label, value, name, onChange, placeholder }) => (
   <div className="space-y-2">
-    <label className="text-sm font-semibold text-[#94A3B8]">{label}</label>
+    <label className={`${label === '첫 장면 작성' ? 'text-[#FB7185]' : 'text-[#F1F5F9]'} text-sm font-semibold text-[#94A3B8]`}>
+      {label === '첫 장면 작성' ? '* ' + label : label}
+    </label>
     <textarea
       placeholder={placeholder}
       rows="4"
       name={name}
       onChange={onChange}
       value={value}
-      className="w-full bg-[#0f172a] border border-[#334155] rounded-xl p-3 text-[#F1F5F9] focus:border-[#FB7185] outline-none resize-none" />
+      className={`w-full bg-[#0f172a] text-[#F1F5F9] border border-[#334155] rounded-xl p-3 focus:border-[#FB7185] outline-none resize-none`} />
   </div>
 );
 

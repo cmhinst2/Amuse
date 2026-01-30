@@ -41,7 +41,9 @@ public class NovelResponse {
 	private String authorName; // 작성자 이름
 	private String profileImg; // 작성자 프로필이미지
 
-	private String mainCharName; // 메인캐릭터 이름
+	//private Long mainCharId; // 메인캐릭터 id
+	//private String mainCharName; // 메인캐릭터 이름
+	private Character mainChar;
 	private List<CharacterInfoDTO> characters; // 캐릭터 리스트 (호감도 포함)
 	private List<String> tags; // 소설 태그 리스트
 
@@ -54,13 +56,13 @@ public class NovelResponse {
 		private Long id;
 		private String name; // 캐릭터 이름
 		private CharacterRole role; // USER 또는 MAIN
-		private int affinity; // 현재 호감도
-		private String personality; // 성격/특징 (AI 프롬프트용)
-		private String profileImageUrl; // 프로필 이미지(호감도 채팅용)
-		private int profileImagePosY; // 프로필 이미지 좌표
-		private String statusMessage; // 프로필 상태메시지(호감도 채팅용)
-		private String firstSceneContent; // 첫장면 서사(호감도 채팅용)
-		private String firstSceneLocation; // 첫장면 위치(호감도 채팅용)
+		private int affinity; // (소설)현재 호감도
+		private String personality; // (소설/뮤즈)성격/특징 (AI 프롬프트용)
+		private String profileImageUrl; // 프로필 이미지
+		private int profileImagePosY; // (뮤즈)프로필 이미지 좌표
+		private String statusMessage; // (뮤즈)프로필 상태메시지
+		private String firstSceneContent; // (뮤즈)첫장면 서사
+		private String firstSceneLocation; // (뮤즈)첫장면 위치
 	}
 
 	@Getter
@@ -86,7 +88,14 @@ public class NovelResponse {
 	            .createdAt(novel.getCreatedAt())
 	            .updatedAt(novel.getUpdatedAt())
 	            .tags(new ArrayList<>(novel.getTags()))
-	            .mainCharName(mainChar.getName())
+	            .mainChar(Character.builder()
+	            		.id(mainChar.getId())
+	            		.name(mainChar.getName())
+	            		.role(CharacterRole.MAIN)
+	            		.firstSceneContent(mainChar.getFirstSceneContent())
+	            		.firstSceneLocation(mainChar.getFirstSceneLocation())
+	            		.build()
+	            		)
 	            .viewCount(stats != null ? stats.getViewCount() : 0L)
 	            .likeCount(stats != null ? stats.getLikeCount() : 0L)
 	            .isDelete(novel.isDelete())

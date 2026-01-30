@@ -18,6 +18,42 @@ export const getJosa = (name, first, second) => {
   return lastCode > 0 ? `${name}${first}` : `${name}${second}`;
 };
 
+/**
+ * 소설 본문 내의 {사용자} 패턴을 찾아 적절한 조사와 함께 닉네임으로 치환
+ * @param {string} template - 소설 본문 (ex: "{사용자}은/는 소파에 앉았다.")
+ * @param {string} nickname - 사용자 닉네임 (ex: "길동" 또는 "민지")
+ */
+export const replaceNicknameWithJosa = (template, nickname) => {
+  if (!template || !nickname) return template || "";
+
+  // 조사 종류
+  const josaMap = {
+    '은': '은/는', '는': '은/는',
+    '이': '이/가', '가': '이/가',
+    '을': '을/를', '를': '을/를',
+    '와': '와/과', '과': '와/과',
+    '아': '아/야', '야': '아/야'
+  };
+
+  // 정규표현식으로  {사용자} 뒤 한글자 찾기(상황에 따라 조사 없을수도있음)
+  return template.replace(/{사용자}([은는이가을를와과아야]?)/g, (match, p1) => {
+    // 이름 뒤에 글자가 없는 경우 ({사용자})
+    if(!p1) return nickname;
+
+    // 조사가 있는 경우 ({사용자}는, {사용자}가)
+    const josaType = josaMap[p1];
+    if(josaType) {
+      const [first, second] = josaType.split('/');
+      return getJosa(nickname, first, second);
+    }
+
+    // 조사가 없는 경우 ({사용자}, {사용자}의, {사용자}님)
+    return nickname + p1;
+  })
+};
+
+
+
 // 서버 이미지 경로 연결 반환 함수
 export const getServerBaseUrl = (path) => {
   return `http://localhost${path}`;

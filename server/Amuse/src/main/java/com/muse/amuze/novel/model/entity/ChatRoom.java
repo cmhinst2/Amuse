@@ -33,6 +33,10 @@ public class ChatRoom extends BaseTimeEntity{
 	private Long id;
 	
 	@ManyToOne(fetch = FetchType.LAZY)
+	@JoinColumn(name = "novel_id", nullable = false)
+	private Novel novel;
+	
+	@ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 	
@@ -54,7 +58,7 @@ public class ChatRoom extends BaseTimeEntity{
     @Builder.Default
     private String status = "ACTIVE";
     
-    private Long scenarioId;
+    private Integer scenarioId;
     
     @Builder.Default
     @Column(name = "scenario_step", nullable = false)
@@ -71,4 +75,7 @@ public class ChatRoom extends BaseTimeEntity{
 
     @Column(name = "current_score")
     private Integer currentScore; // 최신 호감도 점수 직접 저장
+    
+    @Column(name = "user_nickname", length = 10) // 채팅에서 사용할 사용자 닉네임
+    private String userNickname;
 }

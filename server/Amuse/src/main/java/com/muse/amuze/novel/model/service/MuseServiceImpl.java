@@ -1,13 +1,23 @@
 package com.muse.amuze.novel.model.service;
 
+import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.muse.amuze.novel.model.dto.MyMuseReponse;
+import com.muse.amuze.novel.model.ChatRoomRequest;
+import com.muse.amuze.novel.model.dto.MyMuseResponse;
+import com.muse.amuze.novel.model.entity.Character;
+import com.muse.amuze.novel.model.entity.ChatRoom;
+import com.muse.amuze.novel.model.entity.Novel;
+import com.muse.amuze.novel.model.repository.CharacterRepository;
 import com.muse.amuze.novel.model.repository.ChatRoomRepository;
+import com.muse.amuze.novel.model.repository.NovelRepository;
+import com.muse.amuze.user.model.entity.User;
+import com.muse.amuze.user.model.repository.UserRepository;
 
 import groovy.util.logging.Slf4j;
 import lombok.RequiredArgsConstructor;
@@ -17,25 +27,117 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 @PropertySource("classpath:/config.properties")
 public class MuseServiceImpl implements MuseService {
-
+	
 	private final ChatRoomRepository chatRoomRepository;
+	private final NovelRepository novelRepository;
+	private final CharacterRepository characterRepository;
+	private final UserRepository userRepository;
 	
 	/** 나의 Muse 목록 조회
 	 *
 	 */
 	@Transactional(readOnly = true)
 	@Override
-	public List<MyMuseReponse> getMyMuseList(int userId) {
+	public List<MyMuseResponse> getMyMuseList(int userId) {
+		List<ChatRoom> myMuses = chatRoomRepository.findMyMuseListByUserId(userId);
+		if (myMuses.isEmpty()) return Collections.emptyList();
 		
-		return chatRoomRepository.findMyMuseListByUserId(userId);
+		return myMuses.stream()
+	            .map(room -> MyMuseResponse.builder()
+	                .roomId(room.getId())
+	                .characterId(room.getCharacter().getId())
+	                .name(room.getCharacter().getName())
+	                .profileImageUrl(room.getCharacter().getProfileImageUrl())
+	                .profileImagePosY(room.getCharacter().getProfileImagePosY())
+	                .currentScore(room.getCurrentScore())
+	                .relationshipStatus(room.getRelationshipStatus())
+	                .lastMessage(room.getLastMessage())
+	                .lastMessageAt(room.getLastMessageAt())
+	                .currentLocation(room.getCurrentLocation())
+	                .status(room.getStatus())
+	                .isNovelDeleted(room.getNovel().isDelete()) // Novel 엔티티 필드 확인
+	                .isAffinityEnabled(room.getNovel().isAffinityModeEnabled())
+	                .build())
+	            .toList();
 	}
 	
 	/** novelId, userId에 맞는 ChatRoom 조회
 	 *
 	 */
+	@Transactional(readOnly = true)
 	@Override
-	public MyMuseReponse checkChatRoomByUserId(int novelId, int userId) {
-		
-		return chatRoomRepository.findChatRoomByNovelIdAndUserId(novelId, userId);
+	public MyMuseResponse checkChatRoomByUserId(int novelId, int userId) {
+		ChatRoom chatRoom = chatRoomRepository.findChatRoomByNovelIdAndUserId(novelId, userId)
+		        .orElse(null); // 방이 없으면 null 반환 (혹은 예외 처리)
+		if (chatRoom == null) return null;
+		return MyMuseResponse.builder()
+		        .roomId(chatRoom.getId())
+		        .characterId(chatRoom.getCharacter().getId())
+		        .name(chatRoom.getCharacter().getName())
+		        .profileImageUrl(chatRoom.getCharacter().getProfileImageUrl())
+		        .profileImagePosY(chatRoom.getCharacter().getProfileImagePosY())
+		        .currentScore(chatRoom.getCurrentScore())
+		        .relationshipStatus(chatRoom.getRelationshipStatus())
+		        .lastMessage(chatRoom.getLastMessage())
+		        .lastMessageAt(chatRoom.getLastMessageAt())
+		        .currentLocation(chatRoom.getCurrentLocation())
+		        .status(chatRoom.getStatus())
+		        .isNovelDeleted(chatRoom.getNovel().isDelete())
+		        .isAffinityEnabled(chatRoom.getNovel().isAffinityModeEnabled())
+		        .build();
 	}
+	
+	/** 채팅방 생성 서비스
+	 *
+	 */
+	@Transactional
+	@Override
+	public MyMuseResponse createChatRoom(ChatRoomRequest request) {
+		
+		Novel novel = novelRepository.findById(request.getNovelId())
+				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 소설 id 입니다"));
+		
+		User user = userRepository.findById(request.getUserId())
+				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 사용자 id 입니다"));
+		
+		Character character = characterRepository.findById(request.getCharacterId())
+				.orElseThrow(() -> new IllegalArgumentException("존재하지 않는 캐릭터 id 입니다"));
+		
+		
+		ChatRoom chatRoom = ChatRoom.builder()
+	            .novel(novel)
+	            .user(user)
+	            .character(character)
+	            .userNickname(request.getUserNickname())
+	            .scenarioId(request.getScenarioId())
+	            .scenarioStep(request.getScenarioStep())
+	            .currentScore(0)
+	            .currentLocation(request.getFirstSceneLocation())
+	            .lastSummary(request.getFirstSceneContent())
+	            .lastMessage(request.getFirstSceneContent()) // 마지막 대화 내용도 초기화
+	            .lastMessageAt(LocalDateTime.now())
+	            .status("ACTIVE")
+	            .build();
+		
+		// 채팅방 새로 생성 
+		ChatRoom savedRoom = chatRoomRepository.save(chatRoom);
+		
+		return new MyMuseResponse(
+	            savedRoom.getId(),
+	            character.getId(),
+	            character.getName(),
+	            character.getProfileImageUrl(),
+	            character.getProfileImagePosY(),
+	            savedRoom.getCurrentScore(),
+	            savedRoom.getRelationshipStatus(),
+	            savedRoom.getLastMessage(),
+	            savedRoom.getLastMessageAt(),
+	            savedRoom.getCurrentLocation(),
+	            savedRoom.getStatus(),
+	            novel.isDelete(),
+	            novel.isAffinityModeEnabled()
+	    );
+	}
+	
+	
 }

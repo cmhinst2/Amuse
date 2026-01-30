@@ -158,7 +158,6 @@ public class NovelController {
 																	    @RequestParam(name = "page", defaultValue = "0") int page,
 																	    @RequestParam(name = "size", defaultValue = "12") int size) {
 		Page<NovelResponse> novels = novelService.getNovelListSortByAny(order, page, size);
-		log.debug("novels :: {}", novels);
         return ResponseEntity.ok(novels);
 	}
 	

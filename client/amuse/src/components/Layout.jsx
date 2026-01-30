@@ -96,7 +96,6 @@ const NovelAuthorGuard = ({ children }) => {
     enabled: !!novelId && !!userInfo?.id,
   });
 
-  console.log(novel);
   useEffect(() => {
     if (isError) {
       alert("존재하지 않거나 삭제된 소설입니다.");
@@ -139,7 +138,6 @@ const ChatAuthGuard = ({ children }) => {
     queryFn: async() => {
       console.log("채팅방 존재 여부 조회중")
       const resp = await amuseAPI.get(`/api/muse/check/${novelId}/${userId}`);
-      console.log(resp.data)
       return resp.data;
     },
     retry: false,

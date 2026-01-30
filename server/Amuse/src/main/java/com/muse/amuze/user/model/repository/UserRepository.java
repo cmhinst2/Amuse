@@ -6,7 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import com.muse.amuze.user.model.entity.User;
 
-public interface UserRepository extends JpaRepository<User, Long>{
+public interface UserRepository extends JpaRepository<User, Integer>{
 	// 일반 로그인 시 사용  로그인/중복체크용
     Optional<User> findByEmail(String email);
 
