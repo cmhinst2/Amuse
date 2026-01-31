@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Camera } from 'lucide-react';
 import CoverImageDragger from './CoverImageDragger';
-import { getServerBaseUrl } from '../api/converter';
+import { getServerBaseUrl } from '../api/util';
 
 export const CoverImageField = ({ imageUrl, posY, onDataChange }) => {
   const [localPreview, setLocalPreview] = useState(null);

@@ -1,7 +1,8 @@
 import { Sidebar } from "../components/Form";
 import React, { useState, useRef, useEffect } from 'react';
 import { Heart, Send, MapPin, BookOpen, Info, Type } from 'lucide-react';
-import { handleAddParentheses } from "../api/converter";
+import { handleAddParentheses } from "../api/util";
+import { useQuery } from "@tanstack/react-query";
 
 export function MuseChat() {
   // const { novelId, characterId } = useParams();
@@ -12,21 +13,20 @@ export function MuseChat() {
   const [userInput, setUserInput] = useState(''); // 사용자 입력 상태값
 
   // <Data fetch>
+  // const { data, isError, error } = useQuery({
+  //   queryKey: ['muse', 'chatRoom', 'detail', roomId],
+  //   queryFn: fetchChatRoom,
+  //   retry: false // 404 에러일 경우 굳이 재시도할 필요가 없으므로
+  // });
+
+  // if (isError) {
+  //   // 서비스에서 던진 "해당 채팅방을 찾을 수 없습니다" 메시지가 출력됨
+  //   alert(error.response?.data?.message || "채팅방을 찾을 수 없습니다.");
+  // }
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
       <Sidebar />
-      {/* <aside className="w-64 border-r border-[#1e293b] hidden md:block bg-[#1e293b]/30">
-        <div className="p-6">
-          <h2 className="text-[#94A3B8] text-sm font-bold uppercase tracking-wider mb-4 text-center">Character Info</h2>
-          <div className="aspect-[3/4] rounded-xl overflow-hidden mb-4 border-2 border-[#FB7185]/30">
-            <img src="/api/placeholder/400/600" alt="Character" className="w-full h-full object-cover" />
-          </div>
-          <p className="text-[#94A3B8] text-xs leading-relaxed text-center">
-            "당신과 나누는 이 시간이 가장 소중해요."
-          </p>
-        </div>
-      </aside> */}
 
       <main className="flex-1 flex flex-col min-w-0 bg-[#0f172a]">
         <header className="h-[70px] shrink-0 sticky sticky top-0 z-20 flex items-center justify-between px-8 py-4 bg-[#0f172a]/95 backdrop-blur-md border-b border-[#1e293b]">

@@ -52,7 +52,10 @@ public class ChatRoom extends BaseTimeEntity{
     @Column(name = "last_summary", columnDefinition = "TEXT")
     private String lastSummary;
     
+    @Column(name = "ai_status", columnDefinition = "TEXT")
     private String aiStatus;
+    
+    @Column(name = "current_mood")
     private String currentMood;
     
     @Builder.Default
@@ -70,7 +73,7 @@ public class ChatRoom extends BaseTimeEntity{
     
     //---------------------
     
-    @Column(name = "last_message")
+    @Column(name = "last_message", columnDefinition = "TEXT")
     private String lastMessage; // 마지막 대화 내용 직접 저장
 
     @Column(name = "current_score")

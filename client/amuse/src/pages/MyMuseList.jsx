@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import amuseAPI from "../api/amuseAPI";
 import useAuthStore from "../store/authStore";
 import { LoadingScreen } from "../components/Spinner";
+import { formatChatMessageDate, getServerBaseUrl } from "../api/util";
 
 export function MyMuseList() {
   const navigate = useNavigate();
@@ -13,24 +14,10 @@ export function MyMuseList() {
   // <Data Fetch>
   const { data: myMuses = [], isLoading, status, fetchStatus } = useQuery({
     queryKey: ['muse', 'chatRoom', 'list', id],
-    queryFn: () => amuseAPI.get(`/api/muse/${id}`).then(res => res.data),
+    queryFn: () => amuseAPI.get(`/api/muse/chat/${id}`).then(res => res.data),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
   });
-
-  const myMusesDummy = [
-    {
-      id: 1,
-      novelId: 101,
-      characterName: "엘리나 프레데릭",
-      lastMessage: "오늘 날씨가 참 좋네요. 같이 산책이라도 갈까요?",
-      lastChatTime: "10분 전",
-      affinity: 85,
-      profileImg: "https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400&h=400&fit=crop",
-      location: "황실 정원"
-    },
-    // ... 더 많은 뮤즈 데이터
-  ];
 
   if (fetchStatus === 'fetching' && status === 'pending' || isLoading) {
     return <LoadingScreen text={`${nickname}님의 뮤즈들을 불러오는 중 입니다...`} />;
@@ -58,16 +45,19 @@ export function MyMuseList() {
         <section className="p-8 max-w-5xl mx-auto">
           {myMuses.length > 0 ? (
             <div className="grid gap-4">
-              {myMuses.map((muse) => (
+              {myMuses.map((muse, idx) => (
                 <div
-                  key={muse.id}
-                  onClick={() => navigate(`/muse/${muse.novelId}/chat/${muse.id}`)}
+                  key={`${muse.roomId}_${idx}`}
+                  onClick={() => navigate(`/muse/${muse.novelId}/chat/${muse.roomId}`)}
                   className="group relative bg-[#1e293b]/50 hover:bg-[#1e293b] border border-[#334155] hover:border-[#FB7185]/50 rounded-2xl p-5 transition-all cursor-pointer flex items-center gap-6 shadow-lg hover:shadow-[0_0_20px_rgba(251,113,133,0.1)]"
                 >
                   {/* 캐릭터 프로필 이미지 */}
                   <div className="relative shrink-0">
                     <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#334155] group-hover:border-[#FB7185] transition-colors">
-                      <img src={muse.profileImg} alt={muse.characterName} className="w-full h-full object-cover" />
+                      <img src={getServerBaseUrl(muse.profileImageUrl)}
+                       alt={muse.name} 
+                      style={{ objectPosition: `center ${muse.profileImagePosY}%` }} 
+                      className="w-full h-full object-cover" />
                     </div>
                     {/* 온라인/활동 표시 점 */}
                     <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#2DD4BF] border-4 border-[#0f172a] rounded-full shadow-lg" />
@@ -77,22 +67,23 @@ export function MyMuseList() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-3 mb-1">
                       <h3 className="text-lg font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors">
-                        {muse.characterName}
+                        {muse.name}
                       </h3>
                       <span className="flex items-center gap-1 text-[11px] text-[#94A3B8] bg-[#0f172a] px-2 py-0.5 rounded-full">
                         <Heart size={10} className="text-[#FB7185] fill-[#FB7185]" />
-                        {muse.affinity}%
+                        {muse.currentScore}%
                       </span>
+                      <span className="text-[11px] text-[#94A3B8] bg-[#0f172a] px-2 py-0.5 rounded-full">{muse.relationshipStatus}</span>
                     </div>
                     <p className="text-[#94A3B8] text-sm line-clamp-1 mb-2">
                       {muse.lastMessage}
                     </p>
                     <div className="flex items-center gap-4 text-[11px] text-[#475569]">
                       <span className="flex items-center gap-1">
-                        <Clock size={12} /> {muse.lastChatTime}
+                        <Clock size={12} />{formatChatMessageDate(muse.lastMessageAt)}
                       </span>
                       <span className="flex items-center gap-1">
-                        <MessageCircle size={12} /> 최근 장소: {muse.location}
+                        <MessageCircle size={12} /> 최근 장소: {muse.currentLocation}
                       </span>
                     </div>
                   </div>

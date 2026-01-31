@@ -7,7 +7,7 @@ import { Sidebar } from "../components/Form";
 import { Check, Heart, Loader2, Menu, PenLine, RotateCcw, Sparkles, SquarePen, Type, X } from "lucide-react";
 import { LoadingScreen } from "../components/Spinner";
 import { FormatContent } from "../components/Common";
-import { getJosa, handleAddParentheses } from "../api/converter";
+import { getJosa, handleAddParentheses } from "../api/util";
 import { useTypingEffect } from "../api/useTypingEffect";
 import { toast } from 'sonner';
 

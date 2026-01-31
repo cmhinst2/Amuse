@@ -51,7 +51,7 @@ export default function Layout() {
                     <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
                     <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
                     <Route path="/muse" element={<MyMuseList />} />
-                    <Route path="/muse/:novelId/chat/:userId" element={<ChatAuthGuard><MuseChat /></ChatAuthGuard>} />
+                    <Route path="/muse/:novelId/chat/:roomId" element={<ChatAuthGuard><MuseChat /></ChatAuthGuard>} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />
@@ -119,65 +119,71 @@ const NovelAuthorGuard = ({ children }) => {
 
 // Chat 모드 판별 가드 컴포넌트
 const ChatAuthGuard = ({ children }) => {
-  const { novelId, userId } = useParams();
+  const { novelId, roomId } = useParams();
   const navigate = useNavigate();
   const { id: currentUserId } = useAuthStore((state) => state.userInfo);
 
-  // 소설 데이터 조회
+  // 소설 데이터 조회(호감도 모드 유무 확인)
   const { data: novel, isLoading: isNovelLoading, isError: isNovelError } = useQuery({
     queryKey: ['novel', novelId],
     queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
     retry: false,
     staleTime: 1000 * 60 * 60,
-    enabled: !!novelId,
+    enabled: !!novelId
   });
-  
-  // 채팅방 존재 여부 조회 - 실제로 해당 소설(캐릭터)과 채팅방이 생성되어 있는지
-  const { data: chatRoom, isLoading: isChatLoading, isError: isChatError } = useQuery({
-    queryKey: ['muse', 'chatRoom', novelId, userId],
-    queryFn: async() => {
-      console.log("채팅방 존재 여부 조회중")
-      const resp = await amuseAPI.get(`/api/muse/check/${novelId}/${userId}`);
-      return resp.data;
-    },
+
+  // 채팅방 상세 정보 조회 (권한 및 존재 확인)
+  const { data: chatRoom, isLoading: isRoomLoading, isError: isRoomError } = useQuery({
+    queryKey: ['muse', 'chatRoom', 'detail', roomId],
+    queryFn: () => amuseAPI.get(`/api/muse/room/${roomId}`).then(res => res.data),
     retry: false,
-    staleTime: 1000 * 60 * 5,
-    enabled: !!novelId && userId === String(currentUserId) && !!novel,
+    enabled: !!roomId,
   });
 
   useEffect(() => {
-    // 현재 로그인한 유저와 url 상 입력된 userId가 일치하는지 확인
-    if (userId !== String(currentUserId)) {
-      alert("잘못된 접근입니다.");
-      navigate(-1);
+    if (isNovelLoading || isRoomLoading) return; // 로딩중 제외
+
+    // 소설이나 채팅방이 DB에 없는 경우
+    if (isNovelError || isRoomError || !chatRoom || !novel) {
+      alert("접근할 수 없는 경로입니다.");
+      navigate('/library', { replace: true });
       return;
     }
 
-    // novelId의 소설이 있는지 확인
-    if (isNovelError) {
-      alert("존재하지 않거나 삭제된 소설입니다.");
-      navigate(-1);
-      return;
-    }
-
-    // novelId의 소설이 호감도 모드가 활성상태인지 확인
-    if (novel && !novel.affinityModeEnabled) {
+    // 호감도 모드 활성화 여부
+    if (!novel.affinityModeEnabled) {
       alert("호감도 모드가 지원되지 않는 소설입니다!");
       navigate('/library', { replace: true });
       return;
     }
 
-    // 채팅방 권한 확인
-    if (isChatError || chatRoom == '') {
-      alert("대화 기록이 없거나 접근 권한이 없습니다. 먼저 도서관에서 뮤즈와 대화하기를 진행해주세요.");
-      navigate('/library', { replace: true });
+    // 리다이렉트 (roomId가 없는데 서버에서 찾은 경우 == 도서관에서 대화하기 클릭 시)
+    if (!roomId && chatRoom && chatRoom !== '') {
+      navigate(`/muse/${novelId}/chat/${chatRoom.roomId}`, { replace: true });
+      return;
     }
 
-  }, [userId, currentUserId, isNovelError, novel, isChatError, navigate, chatRoom]);
+    // URL의 roomId로 가져온 방의 주인이 내가 아니라면 퇴출
+    if (String(chatRoom.userId) !== String(currentUserId)) {
+      alert("본인의 채팅방만 접근 가능합니다.");
+      navigate('/muse', { replace: true });
+      return;
+    }
 
-  if (isNovelLoading || isChatLoading) {
-    return <LoadingScreen text="내 Muse와의 연결을 확인 중..." />;
-  }
+    // 모든 식별자가 서로 일치하는지 종합 검증(url강제 접근시 소설id,방id,사용자id 모두 일치 확인)
+    const isRightAccess =
+      String(chatRoom.novelId) === String(novelId) &&
+      String(chatRoom.roomId) === String(roomId) &&
+      String(chatRoom.userId) === String(currentUserId);
 
-  return chatRoom != '' && novel?.affinityModeEnabled ? children : null;
+    if (!isRightAccess) {
+      alert("올바르지 않은 접근 경로이거나 권한이 없습니다.");
+      navigate('/muse', { replace: true });
+      return;
+    }
+
+
+  }, [novel, chatRoom, isNovelError, isRoomError, currentUserId, navigate, isNovelLoading, isRoomLoading]);
+
+  return (novel?.affinityModeEnabled && chatRoom) ? children : null;
 }

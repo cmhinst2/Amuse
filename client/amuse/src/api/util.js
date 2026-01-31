@@ -1,4 +1,28 @@
-import { useCallback } from "react";
+import { format, formatDistanceToNow, isToday, isYesterday } from 'date-fns';
+import { ko } from 'date-fns/locale';
+
+// 시간 변경 함수
+export const formatChatMessageDate = (dateString) => {
+  if (!dateString) return '';
+  
+  const date = new Date(dateString);
+
+  // 오늘일때
+  if (isToday(date)) {
+
+    // 상대시간
+    return formatDistanceToNow(date, { addSuffix: true, locale: ko });
+    // 절대시간
+    //return format(date, 'a h:mm', { locale: ko });
+  }
+
+  if (isYesterday(date)) {
+    return '어제';
+  }
+
+  // 그 외(오래됐을때)
+  return format(date, 'MMM d일', { locale: ko });
+};
 
 /**
 * 한글 받침 여부에 따라 조사를 선택해주는 함수

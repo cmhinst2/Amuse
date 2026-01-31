@@ -1,18 +1,18 @@
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Form";
-import useAuthStore from "../store/authStore";
 import { toast } from 'sonner';
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import amuseAPI from "../api/amuseAPI";
 import { useEffect, useState } from "react";
 import { LoadingScreen } from "../components/Spinner";
-import { formatCount, getJosa, getServerBaseUrl, replaceNicknameWithJosa } from "../api/converter";
+import { formatCount, getJosa, getServerBaseUrl, replaceNicknameWithJosa } from "../api/util";
 import { BookOpen, Eye, Heart, MessageCircle, X, UserCircle, ArrowRight } from "lucide-react";
+import useAuthStore from "../store/authStore";
 
 export function Library() {
   // store
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const { id } = useAuthStore(state => state.userInfo);
+  const { id } = useAuthStore(state => state.userInfo) || {};
 
   // states
   const [order, setOrder] = useState('lastest'); // lastest, likes, views
@@ -185,19 +185,18 @@ const NovelActionModal = ({ novel, onClose }) => {
   const { id } = useAuthStore(state => state.userInfo);
   const [isVisible, setIsVisible] = useState(false);
   const [isNicknameOpen, setIsNicknameOpen] = useState(false);
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   // data fetch
-  // 기존 채팅방 체크
+  // 해당 소설에서 생성된 기존 채팅방 체크
   const { refetch: checkChatRoom } = useQuery({
-    queryKey: ['muse', 'chatRoom', novel.id, id],
+    queryKey: ['muse', 'chatRoom', 'check', novel.id, id],
     queryFn: async () => {
       const res = await amuseAPI.get(`/api/muse/check/${novel.id}/${id}`);
       return res.data;
     },
-    staleTime: 1000 * 60 * 5,
     enabled: false,
-    retry: false,
   });
 
   // mutate
@@ -211,7 +210,7 @@ const NovelActionModal = ({ novel, onClose }) => {
       return amuseAPI.post(`/api/muse/create`, {
         userId: id,
         novelId: novel.id,
-        characterId: novel.mainCharId,
+        characterId: novel.mainChar.id,
         userNickname: nickname,
         scenarioId: 1,
         scenarioStep: 0,
@@ -219,8 +218,12 @@ const NovelActionModal = ({ novel, onClose }) => {
         firstSceneContent: processedContent
       });
     },
-    onSuccess: (createdData) => {
-      navigate(`/muse/${novel.id}/chat/${id}`);
+    onSuccess: (res) => {
+      console.log("생성된 방 정보 : ",res);
+      const {roomId} = res.data;
+      queryClient.setQueryData(['muse', 'chatRoom', 'detail', String(roomId)], res.data);
+      queryClient.invalidateQueries({ queryKey: ['muse', 'chatRoom', 'list', id] }); // 뮤즈리스트 캐시 무효화
+      navigate(`/muse/${novel.id}/chat/${roomId}`);
       onClose();
     },
     onError: (error) => {
@@ -246,11 +249,11 @@ const NovelActionModal = ({ novel, onClose }) => {
   }
 
   // 대화하기 버튼 클릭 핸들러
-  const handleStartChat = async (novel) => {
-    const { data: chatRoom } = await checkChatRoom();
+  const handleStartChat = async (selectedNovel) => {
+    const { data: existingRoom } = await checkChatRoom();
 
-    if (chatRoom) {
-      navigate(`/muse/${novel.id}/chat/${id}`);
+    if (existingRoom && existingRoom !== '') { // 채팅방 존재 시
+      navigate(`/muse/${selectedNovel.id}/chat/${existingRoom.roomId}`);
       onClose();
     } else {
       // 닉네임 입력받기 모달창 오픈
@@ -347,7 +350,6 @@ const NovelActionModal = ({ novel, onClose }) => {
         characterName={novel.mainChar.name}
         onClose={() => setIsNicknameOpen(false)}
         onConfirm={(nickname) => {
-          console.log(nickname)
           handleCreateChatRoom(nickname);
           setIsNicknameOpen(false);
         }}

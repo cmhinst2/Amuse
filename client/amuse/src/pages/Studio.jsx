@@ -6,7 +6,7 @@ import amuseAPI from "../api/amuseAPI";
 import { LoadingScreen } from "../components/Spinner";
 import { BookPlus, Eye, Heart } from "lucide-react";
 import { useState } from "react";
-import { getServerBaseUrl } from "../api/converter";
+import { getServerBaseUrl } from "../api/util";
 
 export default function Studio() {
   const navigate = useNavigate();

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import ProfileImageDragger from "./ProfileImageDragger";
 import { Camera } from 'lucide-react';
-import { getServerBaseUrl } from '../api/converter';
+import { getServerBaseUrl } from '../api/util';
 
 export default function ProfileImageField({ mainCharName, imageUrl, posY, onDataChange }) {
   const [localPreview, setLocalPreview] = useState(null);

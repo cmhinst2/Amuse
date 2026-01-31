@@ -1,4 +1,4 @@
-package com.muse.amuze.novel.model;
+package com.muse.amuze.novel.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

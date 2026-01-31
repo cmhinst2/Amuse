@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import com.muse.amuze.novel.model.ChatRoomRequest;
+import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
 import com.muse.amuze.novel.model.service.MuseService;
 
@@ -33,14 +33,13 @@ public class MuseController {
 	 * @param userId
 	 * @return
 	 */
-	@GetMapping("{userId:[0-9]+}")
+	@GetMapping("chat/{userId:[0-9]+}")
 	public ResponseEntity<List<MyMuseResponse>> getMyMuseList(@PathVariable("userId") int userId) {
 		List<MyMuseResponse> myMuses = museService.getMyMuseList(userId);
 		return ResponseEntity.ok(myMuses);
 	}
 
-	/**
-	 * 사용자와 캐릭터의 기존 채팅방 여부 조회
+	/** 사용자와 캐릭터의 기존 채팅방 여부 조회
 	 * 
 	 * @param novelId
 	 * @param userId
@@ -50,15 +49,30 @@ public class MuseController {
 	public ResponseEntity<MyMuseResponse> checkChatRoomByUserId(@PathVariable("novelId") int novelId,
 			@PathVariable("userId") int userId) {
 		MyMuseResponse reponse = museService.checkChatRoomByUserId(novelId, userId);
+		return ResponseEntity.ok(reponse);
+	}
+	
+	/** roomId 여부 확인
+	 * 
+	 * @param novelId
+	 * @param userId
+	 * @return
+	 */
+	@GetMapping("room/{roomId}")
+	public ResponseEntity<MyMuseResponse> checkChatRoomByRoomID(@PathVariable("roomId") Long roomId) {
+		MyMuseResponse reponse = museService.checkChatRoomByRoomID(roomId);
 		log.debug("reponse:: {}", reponse);
 		return ResponseEntity.ok(reponse);
 	}
 
+	/** 뮤즈 채팅방 생성
+	 * @param request
+	 * @return
+	 */
 	@PostMapping("create")
 	public ResponseEntity<MyMuseResponse> createChatRoom(@RequestBody ChatRoomRequest request) {
 		MyMuseResponse reponse = museService.createChatRoom(request);
-		log.debug("reponse:: {}", reponse);
-		return ResponseEntity.ok(null);
+		return ResponseEntity.ok(reponse);
 	}
 
 }

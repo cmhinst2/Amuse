@@ -8,7 +8,7 @@ import { CoverImageField } from "../components/CoverImageField";
 import { useForm, Controller, Watch } from 'react-hook-form';
 import { toast } from "sonner";
 import ProfileImageField from "../components/ProfileImageField";
-import { getJosa } from "../api/converter";
+import { getJosa } from "../api/util";
 
 export function NovelManagementPage() {
   const { novelId } = useParams(); // url의 novelId 얻어오기

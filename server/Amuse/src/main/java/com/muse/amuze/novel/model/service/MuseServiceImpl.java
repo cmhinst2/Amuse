@@ -8,7 +8,7 @@ import org.springframework.context.annotation.PropertySource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.muse.amuze.novel.model.ChatRoomRequest;
+import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
 import com.muse.amuze.novel.model.entity.Character;
 import com.muse.amuze.novel.model.entity.ChatRoom;
@@ -20,6 +20,7 @@ import com.muse.amuze.user.model.entity.User;
 import com.muse.amuze.user.model.repository.UserRepository;
 
 import groovy.util.logging.Slf4j;
+import jakarta.persistence.EntityNotFoundException;
 import lombok.RequiredArgsConstructor;
 
 @Slf4j
@@ -44,6 +45,7 @@ public class MuseServiceImpl implements MuseService {
 		
 		return myMuses.stream()
 	            .map(room -> MyMuseResponse.builder()
+            		.novelId(room.getNovel().getId())
 	                .roomId(room.getId())
 	                .characterId(room.getCharacter().getId())
 	                .name(room.getCharacter().getName())
@@ -55,8 +57,9 @@ public class MuseServiceImpl implements MuseService {
 	                .lastMessageAt(room.getLastMessageAt())
 	                .currentLocation(room.getCurrentLocation())
 	                .status(room.getStatus())
-	                .isNovelDeleted(room.getNovel().isDelete()) // Novel 엔티티 필드 확인
+	                .isNovelDeleted(room.getNovel().isDelete())
 	                .isAffinityEnabled(room.getNovel().isAffinityModeEnabled())
+	                .userId(room.getUser().getId())
 	                .build())
 	            .toList();
 	}
@@ -71,6 +74,7 @@ public class MuseServiceImpl implements MuseService {
 		        .orElse(null); // 방이 없으면 null 반환 (혹은 예외 처리)
 		if (chatRoom == null) return null;
 		return MyMuseResponse.builder()
+				.novelId(chatRoom.getNovel().getId())
 		        .roomId(chatRoom.getId())
 		        .characterId(chatRoom.getCharacter().getId())
 		        .name(chatRoom.getCharacter().getName())
@@ -84,7 +88,29 @@ public class MuseServiceImpl implements MuseService {
 		        .status(chatRoom.getStatus())
 		        .isNovelDeleted(chatRoom.getNovel().isDelete())
 		        .isAffinityEnabled(chatRoom.getNovel().isAffinityModeEnabled())
+		        .userId(chatRoom.getUser().getId())
 		        .build();
+	}
+	
+	@Override
+	public MyMuseResponse checkChatRoomByRoomID(Long roomId) {
+		ChatRoom chatRoom = chatRoomRepository.findChatRoomByRoomId(roomId)
+		        .orElseThrow(() -> new EntityNotFoundException("해당 채팅방을 찾을 수 없습니다. ID: " + roomId));
+		
+		return MyMuseResponse.builder()
+				.roomId(roomId)
+				.novelId(chatRoom.getNovel().getId())
+				.userId(chatRoom.getUser().getId())
+				.name(chatRoom.getCharacter().getName())
+				.profileImageUrl(chatRoom.getCharacter().getProfileImageUrl())
+				.profileImagePosY(chatRoom.getCharacter().getProfileImagePosY())
+				.currentScore(chatRoom.getCurrentScore())
+				.statusMessage(chatRoom.getCharacter().getStatusMessage())
+				.relationshipStatus(chatRoom.getRelationshipStatus())
+				.currentLocation(chatRoom.getCurrentLocation())
+				.isAffinityEnabled(chatRoom.getNovel().isAffinityModeEnabled())
+				.status(chatRoom.getStatus())
+				.build();
 	}
 	
 	/** 채팅방 생성 서비스
@@ -114,7 +140,7 @@ public class MuseServiceImpl implements MuseService {
 	            .currentScore(0)
 	            .currentLocation(request.getFirstSceneLocation())
 	            .lastSummary(request.getFirstSceneContent())
-	            .lastMessage(request.getFirstSceneContent()) // 마지막 대화 내용도 초기화
+	            .lastMessage(request.getFirstSceneContent())
 	            .lastMessageAt(LocalDateTime.now())
 	            .status("ACTIVE")
 	            .build();
@@ -122,22 +148,26 @@ public class MuseServiceImpl implements MuseService {
 		// 채팅방 새로 생성 
 		ChatRoom savedRoom = chatRoomRepository.save(chatRoom);
 		
-		return new MyMuseResponse(
-	            savedRoom.getId(),
-	            character.getId(),
-	            character.getName(),
-	            character.getProfileImageUrl(),
-	            character.getProfileImagePosY(),
-	            savedRoom.getCurrentScore(),
-	            savedRoom.getRelationshipStatus(),
-	            savedRoom.getLastMessage(),
-	            savedRoom.getLastMessageAt(),
-	            savedRoom.getCurrentLocation(),
-	            savedRoom.getStatus(),
-	            novel.isDelete(),
-	            novel.isAffinityModeEnabled()
-	    );
+		return MyMuseResponse.builder()
+		        .novelId(novel.getId())
+		        .roomId(savedRoom.getId())
+		        .characterId(character.getId())
+		        .name(character.getName())
+		        .profileImageUrl(character.getProfileImageUrl())
+		        .profileImagePosY(character.getProfileImagePosY())
+		        .currentScore(savedRoom.getCurrentScore())
+		        .relationshipStatus(savedRoom.getRelationshipStatus())
+		        .lastMessage(savedRoom.getLastMessage())
+		        .lastMessageAt(savedRoom.getLastMessageAt())
+		        .currentLocation(savedRoom.getCurrentLocation())
+		        .status(savedRoom.getStatus())
+		        .isNovelDeleted(novel.isDelete())
+		        .isAffinityEnabled(novel.isAffinityModeEnabled())
+		        .userId(user.getId())
+		        .build();
+		
+		
+		
+		
 	}
-	
-	
 }
