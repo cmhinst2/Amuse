@@ -107,6 +107,7 @@ public class NovelServiceImpl implements NovelService {
 	@Override
 	public Long createNovel(NovelCreateRequest request, MultipartFile coverImage, User user) throws Exception {
 
+		log.debug("request:: {}", request);
 		String rename = null;
 		String updatePath = null;
 
@@ -119,7 +120,8 @@ public class NovelServiceImpl implements NovelService {
 
 		// 캐릭터 설정 정보 요약
 		// AI 컨텍스트용으로 쓰기 위해 캐릭터 리스트를 하나의 텍스트로 합침
-		String combinedSettings = request.getCharacters().stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
+		String combinedSettings = request.getCharacters()
+		.stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
 				c.getName(), c.getRole(), c.getGender(), c.getPersonality(), c.getAppearance()))
 				.collect(Collectors.joining("\n"));
 
@@ -127,9 +129,10 @@ public class NovelServiceImpl implements NovelService {
 		Novel novel = Novel.builder().author(user) // 작가정보
 				.title(request.getTitle()) // 제목
 				.description(request.getDescription()) // 짧은소개글
+				.worldSetting(request.getWorldSetting()) // 세계관
 				.tags(request.getTags()) // 태그
 				.coverImageUrl(updatePath) // 커버이미지
-				.characterSettings(combinedSettings) // 요약본 저장
+				.characterSettings(combinedSettings) // 캐릭터 요약본 저장
 				.status("PROCESS") // 진행중인소설
 				.isShared(false) // 비공유
 				.build();
@@ -140,24 +143,33 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 개별 엔티티 저장
 		if (request.getCharacters() != null && !request.getCharacters().isEmpty()) {
 			List<Character> characterEntities = request.getCharacters().stream()
-					.map(charDto -> Character.builder().novel(savedNovel).name(charDto.getName())
-							.role(charDto.getRole()).personality(charDto.getPersonality())
-							.appearance(charDto.getAppearance()).gender(charDto.getGender()).affinity(0) // 초기 호감도 0
-							.relationshipLevel("ACQUAINTANCE") // 초기 관계 '지인'
-							.build())
+						.map(charDto -> Character.builder()
+						.novel(savedNovel)
+						.name(charDto.getName())
+						.role(charDto.getRole())
+						.personality(charDto.getPersonality())
+						.appearance(charDto.getAppearance())
+						.gender(charDto.getGender())
+						.affinity(0) // 초기 호감도 0
+						.relationshipLevel(charDto.getRelationshipLevel())
+						.build())
 					.collect(Collectors.toList());
 			characterRepository.saveAll(characterEntities);
 		}
 
 		// 소설 통계 초기 데이터 생성 (조회수, 좋아요 등)
-		NovelStats stats = NovelStats.builder().novel(savedNovel).viewCount(0L).likeCount(0L).build();
+		NovelStats stats = NovelStats.builder()
+		.novel(savedNovel)
+		.viewCount(0L)
+		.likeCount(0L).build();
 		novelStatsRepository.save(stats);
 
 		// 유저가 입력한 첫장면 저장
 		StoryScene firstScene = StoryScene.builder().novel(savedNovel).sequenceOrder(0) // 첫 번째 데이터
 				.userInput(request.getFirstScene()) // 사용자가 입력한 가이드/프롬프트
 				.aiOutput(request.getFirstScene()) // 첫 장면은 사용자가 쓴 내용이 곧 본문
-				.keyEvent("소설의 시작").affinityAtMoment(0).build();
+				.keyEvent("소설의 시작")
+				.affinityAtMoment(0).build();
 		storySceneRepository.save(firstScene);
 
 		return savedNovel.getId();

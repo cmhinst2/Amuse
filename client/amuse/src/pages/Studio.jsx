@@ -144,7 +144,6 @@ export const NovelList = ({ data, isOwner }) => {
     )
   }
 
-  console.log(data);
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
       {data.map((novel, index) => (
@@ -178,13 +177,13 @@ export const NovelList = ({ data, isOwner }) => {
             </div>
 
             <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
-              <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md 
+              <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md 
                 ${novel.shared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
                 {novel.shared ? '연재 중' : '비공개'}
               </span>
-              <span className={`text-[15px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
+              <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
                 ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                채팅모드 {novel.affinityModeEnabled ? 'ON' : 'OFF'}
+                Remake / Chat {novel.affinityModeEnabled ? 'ON' : 'OFF'}
               </span>
             </div>
           </div>

@@ -21,6 +21,7 @@ import { NovelManagementPage } from "../pages/NovelManagementPage";
 import { MuseChat } from "../pages/MuseChat";
 import { MyMuseList } from "../pages/MyMuseList";
 import { useEffect } from "react";
+import MuseDescription from "../pages/MuseDescription";
 
 
 export default function Layout() {
@@ -33,13 +34,9 @@ export default function Layout() {
       <div className="flex flex-1 overflow-hidden">
         <main className="flex-1 flex flex-col h-full w-full overflow-y-auto">
           <Routes>
-            {/* 공개 경로 */}
             <Route path="/login" element={<LoginPage />} />
-
-            {/* 카카오 콜백 페이지 */}
             <Route path="/auth/kakao/callback" element={<KakaoCallback />} />
 
-            {/* 로그인 조건부 라우팅 */}
             {isLoggedIn ? (
               <Route
                 path="/*"
@@ -51,6 +48,7 @@ export default function Layout() {
                     <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
                     <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
                     <Route path="/muse" element={<MyMuseList />} />
+                    <Route path="/muse/description/:characterId" element={<CharacterAuthGuard><MuseDescription /></CharacterAuthGuard>} />
                     <Route path="/muse/:novelId/chat/:roomId" element={<ChatAuthGuard><MuseChat /></ChatAuthGuard>} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
@@ -186,4 +184,38 @@ const ChatAuthGuard = ({ children }) => {
   }, [novel, chatRoom, isNovelError, isRoomError, currentUserId, navigate, isNovelLoading, isRoomLoading]);
 
   return (novel?.affinityModeEnabled && chatRoom) ? children : null;
+}
+
+// Character 판별 가드 컴포넌트
+const CharacterAuthGuard = ({ children }) => {
+  const { characterId } = useParams();
+  const navigate = useNavigate();
+
+  // 해당 id의 캐릭터가 있는지, 호감도 모드를 지원 유무 확인
+  const { data: character, isLoading, isError, isSuccess } = useQuery({
+    queryKey: ['muse', 'character', characterId],
+    queryFn: () => amuseAPI.get(`/api/muse/${characterId}`).then(res => res.data),
+    enabled: !!characterId,
+    retry: false,
+  });
+
+  useEffect(() => {
+    if (isLoading) return;
+
+    if (isError || !character) {
+      alert("존재하지 않는 캐릭터이거나 접근 권한이 없습니다.");
+      navigate('/library', { replace: true });
+      return;
+    }
+
+    if (character && !character.affinityModeEnabled) {
+      alert("이 캐릭터는 호감도 모드를 지원하지 않습니다.");
+      navigate('/library', { replace: true });
+    }
+
+  }, [character, isError, isLoading, navigate])
+  
+  if (isLoading) return <LoadingScreen text={'캐릭터 정보를 조회 중 입니다...'} />;
+
+  return isSuccess && character?.mainChar.id ? children : null;
 }

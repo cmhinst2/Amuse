@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
+import com.muse.amuze.novel.model.dto.NovelResponse;
 
 public interface MuseService {
 
@@ -14,5 +15,7 @@ public interface MuseService {
 	MyMuseResponse createChatRoom(ChatRoomRequest request);
 
 	MyMuseResponse checkChatRoomByRoomID(Long roomId);
+
+  NovelResponse checkValidCharacter(Long characterId);
 
 }

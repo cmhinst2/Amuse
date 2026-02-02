@@ -28,4 +28,5 @@ public interface NovelRepository extends JpaRepository<Novel, Long> {
 	       "LEFT JOIN NovelStats ns ON n.id = ns.novelId " +
 	       "WHERE n.isShared = true AND n.isDelete = false")
 	Page<Novel> findSharedNovels(Pageable pageable);
+
 }

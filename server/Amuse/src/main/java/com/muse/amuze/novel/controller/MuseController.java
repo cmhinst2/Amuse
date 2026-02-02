@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
+import com.muse.amuze.novel.model.dto.NovelResponse;
 import com.muse.amuze.novel.model.service.MuseService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,8 +49,8 @@ public class MuseController {
 	@GetMapping("check/{novelId}/{userId}")
 	public ResponseEntity<MyMuseResponse> checkChatRoomByUserId(@PathVariable("novelId") int novelId,
 			@PathVariable("userId") int userId) {
-		MyMuseResponse reponse = museService.checkChatRoomByUserId(novelId, userId);
-		return ResponseEntity.ok(reponse);
+		MyMuseResponse response = museService.checkChatRoomByUserId(novelId, userId);
+		return ResponseEntity.ok(response);
 	}
 	
 	/** roomId 여부 확인
@@ -60,9 +61,8 @@ public class MuseController {
 	 */
 	@GetMapping("room/{roomId}")
 	public ResponseEntity<MyMuseResponse> checkChatRoomByRoomID(@PathVariable("roomId") Long roomId) {
-		MyMuseResponse reponse = museService.checkChatRoomByRoomID(roomId);
-		log.debug("reponse:: {}", reponse);
-		return ResponseEntity.ok(reponse);
+		MyMuseResponse response = museService.checkChatRoomByRoomID(roomId);
+		return ResponseEntity.ok(response);
 	}
 
 	/** 뮤즈 채팅방 생성
@@ -71,8 +71,18 @@ public class MuseController {
 	 */
 	@PostMapping("create")
 	public ResponseEntity<MyMuseResponse> createChatRoom(@RequestBody ChatRoomRequest request) {
-		MyMuseResponse reponse = museService.createChatRoom(request);
-		return ResponseEntity.ok(reponse);
+		MyMuseResponse response = museService.createChatRoom(request);
+		return ResponseEntity.ok(response);
+	}
+
+	/** 캐릭터 유무 확인
+	 * @param request
+	 * @return
+	 */
+	@GetMapping("{characterId}")
+	public ResponseEntity<NovelResponse> checkValidCharacter(@PathVariable("characterId") Long characterId) {
+		NovelResponse response = museService.checkValidCharacter(characterId);
+		return ResponseEntity.ok(response);
 	}
 
 }

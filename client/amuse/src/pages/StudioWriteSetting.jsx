@@ -121,7 +121,6 @@ export default function StudioWriteSetting() {
 
   }
 
-
   // <Mutations>
   // 소설 생성 Mutation
   const createNovelMutation = useMutation({
@@ -136,9 +135,10 @@ export default function StudioWriteSetting() {
         title: data.title,
         tags: filteredTags,
         description: data.description,
-        worldSetting: data.worldSetting, // 추가된 세계관
-        characters: data.characters,     // 구조화된 리스트 전송
-        firstScene: data.firstSceneInput
+        worldSetting: data.worldSetting,
+        characters: data.characters,
+        firstScene: data.firstSceneInput,
+        relationshipLevel : data.relationshipLevel,
       });
 
       // Blob 생성 시 한글 깨짐 방지를 위해 UTF-8 명시 (선택사항이나 권장)

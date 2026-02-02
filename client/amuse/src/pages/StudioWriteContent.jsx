@@ -260,25 +260,6 @@ export function StudioWriteContent() {
     }
   });
 
-  // <Effects>
-  // 소설 못찾았을 때
-  // useEffect(() => {
-  //   if (isError) {
-  //     toast.error("소설 찾기 불가!", {
-  //       description: "이런 소설은 없는 것 같아요~",
-  //       duration: 3000,
-  //       style: {
-  //         background: '#1e293b', // Amuse 카드 배경색
-  //         color: '#F1F5F9',      // 메인 텍스트색
-  //         border: '1px solid #FB7185', // 로즈 포인트 테두리
-  //       },
-  //       // 아이콘 색상도 로즈색으로 변경
-  //       icon: <span className="text-[#FB7185]">⚠️</span>,
-  //     });
-  //     navigate('/studio');
-  //   }
-  // }, [isError, navigate]);
-
   // 자동 스크롤 하단 유지
   useEffect(() => {
     if (!isScenesLoading && scenes.length > 0 && mainScrollRef.current) {
@@ -429,7 +410,6 @@ export function StudioWriteContent() {
     setIsEditMode(flag);
     setEditInput(scene.content);
   }
-
 
   // 로딩 중 스피너
   if (isNovelLoading || isScenesLoading) return <LoadingScreen text={`${getJosa(mainCharacter.name, "을", "를")} 불러오는 중입니다...`} />

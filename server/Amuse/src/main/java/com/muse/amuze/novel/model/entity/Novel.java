@@ -88,6 +88,9 @@ public class Novel extends BaseTimeEntity {
     @Builder.Default
     private Integer coverImagePosY = 50;
 
+    @Column(name = "world_setting", columnDefinition = "TEXT")
+    private String worldSetting;
+
 	public void updateSettings(NovelSettingRequest request) {
 		if (request.getTitle() != null) this.title = request.getTitle();
 	    if (request.getDescription() != null) this.description = request.getDescription();

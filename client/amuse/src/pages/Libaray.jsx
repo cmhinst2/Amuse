@@ -77,7 +77,6 @@ export function Library() {
       {isLoggedIn && <Sidebar />}
 
       <main className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* 정렬 헤더 */}
         <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-4 bg-[#0f172a]/90 backdrop-blur-md border-b border-[#1e293b]">
           <div className="flex items-center gap-2 text-sm text-[#94A3B8]">
             <button onClick={() => setOrder("lastest")} className={`${order == 'lastest' && 'text-[#FB7185] font-bold'} hover:text-[#FB7185] transition-colors`}>최신순</button>
@@ -133,7 +132,7 @@ export function Library() {
                   <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
                     <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
                       ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                      Chat {novel.affinityModeEnabled ? 'ON' : 'OFF'}
+                      Remake / Chat {novel.affinityModeEnabled ? 'ON' : 'OFF'}
                     </span>
                     <span className="flex gap-4">
                       <div className="flex items-center gap-1">
@@ -182,60 +181,19 @@ export function Library() {
 
 // 모달 컴포넌트
 const NovelActionModal = ({ novel, onClose }) => {
-  const { id } = useAuthStore(state => state.userInfo);
   const [isVisible, setIsVisible] = useState(false);
-  const [isNicknameOpen, setIsNicknameOpen] = useState(false);
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
 
   // data fetch
   // 해당 소설에서 생성된 기존 채팅방 체크
-  const { refetch: checkChatRoom } = useQuery({
-    queryKey: ['muse', 'chatRoom', 'check', novel.id, id],
-    queryFn: async () => {
-      const res = await amuseAPI.get(`/api/muse/check/${novel.id}/${id}`);
-      return res.data;
-    },
-    enabled: false,
-  });
-
-  // mutate
-  // Muse 채팅방 생성
-  const { mutate: createChatRoom } = useMutation({
-    mutationFn: (nickname) => {
-      const processedContent = replaceNicknameWithJosa(
-        novel.mainChar.firstSceneContent,
-        nickname
-      );
-      return amuseAPI.post(`/api/muse/create`, {
-        userId: id,
-        novelId: novel.id,
-        characterId: novel.mainChar.id,
-        userNickname: nickname,
-        scenarioId: 1,
-        scenarioStep: 0,
-        firstSceneLocation: novel.mainChar.firstSceneLocation,
-        firstSceneContent: processedContent
-      });
-    },
-    onSuccess: (res) => {
-      console.log("생성된 방 정보 : ",res);
-      const {roomId} = res.data;
-      queryClient.setQueryData(['muse', 'chatRoom', 'detail', String(roomId)], res.data);
-      queryClient.invalidateQueries({ queryKey: ['muse', 'chatRoom', 'list', id] }); // 뮤즈리스트 캐시 무효화
-      navigate(`/muse/${novel.id}/chat/${roomId}`);
-      onClose();
-    },
-    onError: (error) => {
-      console.error("생성 실패:", error);
-      toast("💥 채팅방 생성 중 오류 발생", {
-        style: {
-          backgroundColor: '#ea4747',
-          color: '#F1F5F9'
-        }
-      })
-    }
-  });
+  // const { refetch: checkChatRoom } = useQuery({
+  //   queryKey: ['muse', 'chatRoom', 'check', novel.id, id],
+  //   queryFn: async () => {
+  //     const res = await amuseAPI.get(`/api/muse/check/${novel.id}/${id}`);
+  //     return res.data;
+  //   },
+  //   enabled: false,
+  // });
 
   // 소설 읽기 페이지로 이동
   const handleReadNovel = () => {
@@ -243,22 +201,20 @@ const NovelActionModal = ({ novel, onClose }) => {
     onClose();
   };
 
-  // 채팅 방 생성 및 이동
-  const handleCreateChatRoom = (nickname) => {
-    createChatRoom(nickname);
-  }
+
 
   // 대화하기 버튼 클릭 핸들러
   const handleStartChat = async (selectedNovel) => {
-    const { data: existingRoom } = await checkChatRoom();
+    navigate(`/muse/description/${selectedNovel.mainChar.id}`);
+    //const { data: existingRoom } = await checkChatRoom();
 
-    if (existingRoom && existingRoom !== '') { // 채팅방 존재 시
-      navigate(`/muse/${selectedNovel.id}/chat/${existingRoom.roomId}`);
-      onClose();
-    } else {
-      // 닉네임 입력받기 모달창 오픈
-      setIsNicknameOpen(true);
-    }
+    // if (existingRoom && existingRoom !== '') { // 채팅방 존재 시
+    //   navigate(`/muse/${selectedNovel.id}/chat/${existingRoom.roomId}`);
+    //   onClose();
+    // } else {
+    //   // 닉네임 입력받기 모달창 오픈
+    //   setIsNicknameOpen(true);
+    // }
   };
 
   // 카드 애니메이션 트리거
@@ -270,8 +226,6 @@ const NovelActionModal = ({ novel, onClose }) => {
     <div onClick={onClose}
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
       <article onClick={(e) => e.stopPropagation()} className="relative w-full max-w-sm overflow-hidden bg-[#1e293b] rounded-2xl border border-[#334155] shadow-2xl animate-in fade-in zoom-in duration-200">
-
-        {/* 상단 닫기 버튼 */}
         <button
           onClick={onClose}
           className="z-20 absolute right-4 top-4 text-[#94A3B8] hover:text-[#F1F5F9] transition-colors"
@@ -279,7 +233,6 @@ const NovelActionModal = ({ novel, onClose }) => {
           <X size={30} />
         </button>
 
-        {/* 소설 정보 헤더 */}
         <div className="p-10 pb-0 text-center">
           <div className="relative aspect-[4/5] mb-5">
             <div className="w-full h-full [filter:drop-shadow(0_10px_20px_rgba(0,0,0,0.6))]">
@@ -293,13 +246,11 @@ const NovelActionModal = ({ novel, onClose }) => {
                   style={{ objectPosition: `center ${novel.coverImagePosY}%` }}
                 />
 
-                <div
-                  className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent 
-                          transition-all duration-1000 ease-out flex flex-col justify-end p-8 text-left
-                          ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}
-                >
+                <div className={`absolute inset-0 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent 
+                  transition-all duration-1000 ease-out flex flex-col justify-end p-8 text-left
+                  ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-full opacity-0'}`}>
                   <p className={`whitespace-pre-wrap break-keep text-[#F1F5F9] text-ms leading-relaxed transition-all duration-1000 delay-300
-                             ${isVisible ? '-translate-y-4 opacity-100' : 'translate-y-4 opacity-0'}`}>
+                    ${isVisible ? '-translate-y-4 opacity-100' : 'translate-y-4 opacity-0'}`}>
                     {novel.description}
                   </p>
                 </div>
@@ -309,18 +260,16 @@ const NovelActionModal = ({ novel, onClose }) => {
           </div>
 
           <h2 className={`${novel.title.length >= 10 ? 'text-2xl' : 'text-3xl'} font-bold text-[#F1F5F9] mb-4 
-               [text-shadow:0_4px_5px_rgba(0,0,0,0.8)]
-               tracking-tight whitespace-pre-wrap break-keep`}>{novel.title}</h2>
+            [text-shadow:0_4px_5px_rgba(0,0,0,0.8)]
+            tracking-tight whitespace-pre-wrap break-keep`}>{novel.title}</h2>
           <section className="flex gap-2 mb-3 justify-center">
             {novel.tags.map((tag, idx) => (
               <span className="cursor-pointer text-[13px] px-2 rounded-lg text-[#F1F5F9] bg-[#334155] hover:text-[#FB7185]" key={`${tag}_${idx}`}>#{tag}</span>
             ))}
           </section>
           <p className="cursor-pointer text-sm text-[#94A3B8] hover:text-[#FB7185]">@{novel.authorName}</p>
-
         </div>
 
-        {/* 선택 버튼 영역 */}
         <div className="p-6 flex flex-col gap-3">
           <button
             onClick={handleReadNovel}
@@ -336,7 +285,7 @@ const NovelActionModal = ({ novel, onClose }) => {
               className="flex items-center justify-center gap-3 w-full py-4 bg-[#FB7185] hover:bg-[#f43f5e] text-white rounded-xl transition-all font-bold shadow-lg shadow-rose-900/20 group"
             >
               <MessageCircle size={20} className="group-hover:animate-bounce" />
-              {getJosa(novel.mainChar.name, '과', '와')} 대화하기
+              {getJosa(novel.mainChar.name, '을', '를')} Muse로 만들기
             </button>}
         </div>
 
@@ -345,89 +294,8 @@ const NovelActionModal = ({ novel, onClose }) => {
             <p className="text-[12px] text-[#94A3B8]">{getJosa(novel.mainChar.name, '과', '와')}의 대화에서 몰입을 위해 소설 읽기를 추천드려요💕</p>
           </div>}
       </article>
-      <NicknameInputModal
-        isOpen={isNicknameOpen}
-        characterName={novel.mainChar.name}
-        onClose={() => setIsNicknameOpen(false)}
-        onConfirm={(nickname) => {
-          handleCreateChatRoom(nickname);
-          setIsNicknameOpen(false);
-        }}
-      />
+      
     </div>
   );
 };
 
-// 닉네임 입력용 모달
-const NicknameInputModal = ({ isOpen, onClose, onConfirm, characterName }) => {
-  const [nickname, setNickname] = useState('');
-
-  if (!isOpen) return null;
-
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const trimmedNickname = nickname.trim();
-    if (trimmedNickname.length < 2) {
-      alert("닉네임은 최소 2글자 이상이어야 합니다.");
-      return;
-    }
-    onConfirm(trimmedNickname);
-  };
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4" onClick={(e) => e.stopPropagation()}>
-      <div
-        className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-        onClick={onClose}
-      />
-
-      <div className="relative w-full max-w-md bg-[#1e293b] border border-[#334155] rounded-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-200">
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 text-[#94A3B8] hover:text-[#F1F5F9] transition-colors">
-          <X size={20} />
-        </button>
-
-        <div className="p-8">
-          <div className="flex justify-center mb-6">
-            <div className="w-16 h-16 bg-[#334155] rounded-full flex items-center justify-center text-[#FB7185]">
-              <UserCircle size={40} />
-            </div>
-          </div>
-
-          <div className="text-center mb-8">
-            <h3 className="text-xl font-bold text-[#F1F5F9] mb-2">
-              당신의 이름은 무엇인가요?
-            </h3>
-            <p className="text-[#94A3B8] text-sm">
-              <span className="text-[#FB7185] font-semibold">{getJosa(characterName, '이', '가')}</span> 당신을 부를 이름이 됩니다.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative">
-              <input
-                autoFocus
-                type="text"
-                value={nickname}
-                onChange={(e) => setNickname(e.target.value)}
-                placeholder="닉네임을 입력하세요 (2~10자)"
-                maxLength={10}
-                className="w-full bg-[#0f172a] border border-[#334155] rounded-xl px-5 py-4 text-[#F1F5F9] outline-none focus:border-[#FB7185] ring-inset focus:ring-1 focus:ring-[#FB7185] transition-all placeholder:text-[#94A3B8]"
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={nickname.trim().length < 2}
-              className="w-full bg-[#FB7185] hover:bg-[#e11d48] active:scale-[0.98] disabled:bg-[#334155] disabled:cursor-not-allowed text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all"
-            >
-              뮤즈 만들기 시작
-              <ArrowRight size={18} />
-            </button>
-          </form>
-        </div>
-      </div>
-    </div>
-  );
-};

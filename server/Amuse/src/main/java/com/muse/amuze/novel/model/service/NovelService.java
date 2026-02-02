@@ -42,7 +42,6 @@ public interface NovelService {
 	 */
 	StorySceneResponse regenerateScene(NovelUserInputRequest novelRequest) throws Exception;
 
-
 	/** 해당 소설 모든 기록 불러오기
 	 * @param novelId
 	 * @return

@@ -56,6 +56,7 @@ public class NovelResponse {
 		private Long id;
 		private String name; // 캐릭터 이름
 		private CharacterRole role; // USER 또는 MAIN
+		private String gender; // 캐릭터 성별
 		private int affinity; // (소설)현재 호감도
 		private String personality; // (소설/뮤즈)성격/특징 (AI 프롬프트용)
 		private String profileImageUrl; // 프로필 이미지

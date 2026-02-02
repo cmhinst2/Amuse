@@ -48,9 +48,7 @@ export default function Header() {
   return (
     <header className="h-16 bg-[#0f172a]/80 backdrop-blur-md border-b border-[#1e293b] px-8 flex items-center justify-between sticky top-0 z-50">
       <div className="flex items-center gap-10">
-        <Link to="/" className="text-2xl font-black text-[#FB7185] tracking-tight">
-          AMUSE
-        </Link>
+        <Link to="/" className="text-2xl font-black text-[#FB7185] tracking-tight">AMUSE</Link>
 
         <nav className="hidden md:flex gap-8 text-[13px] tracking-widest text-[#94A3B8]">
           <Link to="/library" className="hover:text-[#F1F5F9] transition-colors">도서관</Link>
@@ -80,7 +78,6 @@ export default function Header() {
           </button>
         }
 
-        {/* --- 사용자 프로필 & 드롭다운 영역 --- */}
         {store?.nickname &&
           <div className="relative z-[60]" ref={menuRef}>
             <button

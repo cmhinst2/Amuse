@@ -13,6 +13,7 @@ public class NovelCreateRequest {
     private String description;
     private List<String> tags;
     private String firstScene;
+    private String worldSetting;
     
     // 구조화된 캐릭터 리스트 추가
     private List<CharacterRequest> characters;
@@ -24,5 +25,6 @@ public class NovelCreateRequest {
         private String gender; // "M", "F"
         private String personality;
         private String appearance;
+        private String relationshipLevel;
     }
 }
