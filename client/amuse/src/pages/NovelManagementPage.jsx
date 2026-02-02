@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Sidebar } from "../components/Form";
-import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plus, ImageIcon } from "lucide-react";
+import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plus, ImageIcon, MessageSquareQuote, User } from "lucide-react";
 import amuseAPI from "../api/amuseAPI";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoverImageField } from "../components/CoverImageField";
@@ -44,7 +44,8 @@ export function NovelManagementPage() {
       profileImagePosY: novel.characters.find((c) => c.role == 'MAIN').profileImagePosY,
       statusMessage: novel.characters.find((c) => c.role == 'MAIN').statusMessage,
       firstSceneContent: novel.characters.find((c) => c.role == 'MAIN').firstSceneContent || '',
-      firstSceneLocation: novel.characters.find((c) => c.role == 'MAIN').firstSceneLocation || ''
+      firstSceneLocation: novel.characters.find((c) => c.role == 'MAIN').firstSceneLocation || '',
+      speechExamples: novel.characters.find((c) => c.role == 'MAIN').speechExamples || '',
     }
   });
 
@@ -118,7 +119,7 @@ export function NovelManagementPage() {
       // 최종 값 추출 및 검사
       const content = formData.get('firstSceneContent')?.toString().trim() || "";
       const location = formData.get('firstSceneLocation')?.toString().trim() || "";
-      
+
       if (!content || !location) {
         toast("호감도 모드에서는 첫 장면과 장소가 필수입니다!", {
           style: {
@@ -188,6 +189,44 @@ export function NovelManagementPage() {
     });
   }
 
+  // 템플릿 가이드 함수
+  const handleFillTemplate = () => {
+    const currentVal = getValues("speechExamples");
+
+    // 이미 내용이 있다면 덮어쓰기 전 확인
+    if (currentVal && !confirm("이미 작성된 내용이 있습니다. 예시 양식으로 덮어쓸까요?")) {
+      return;
+    }
+
+    const template = `## 호감도가 낮을 때 (0~30%)
+- 무뚝뚝하고 짧게 끊는 말투
+예시) "됐어. 그냥 가."
+- 감정 드러나지 않게 평온한 척
+예시) "상관없습니다. 그쪽 일이니까."
+- 쌀쌀맞게 거절하는 투
+예시) "필요 없어요. 혼자 잘 해왔으니까."
+
+## 호감도가 보통일 때 (31~70%)
+- 살짝 걱정 섞인 무뚝뚝함
+예시) "...밥은 먹고 다녀? 얼굴이 왜 그래."
+- 장난스럽게 틱틱대기
+예시) "또 그러고 다니면 내가 모른 척 못 해줘." 
+- 소프트해진 걱정
+예시) "늦으면 연락해. 데리러 갈게."
+
+## 호감도가 높을 때 (71~100%)
+- 감정을 숨기려다 튀어나오는 솔직함
+예시) "...좋아해. 아직도."
+- 절박하게 붙잡는 투
+예시) "가지 마. 제발... 이번엔 가지 마."
+- 허스키하게 속삭이기
+예시) "이렇게 가까이 있는데 참는 거 너무 힘들어."
+- 질투 섞인 확인
+예시) "나만 보는 거 맞지? 다른 놈 생기면 가만 안 둬."`;
+
+    setValue("speechExamples", template, { shouldDirty: true });
+  };
+
   if (isNovelLoading) return <p>Loading...</p>;
 
   return (
@@ -218,7 +257,7 @@ export function NovelManagementPage() {
               onClick={() => setActiveTab('dating')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === 'dating' ? 'bg-[#1e293b] text-[#FB7185] border border-[#334155]' : 'text-[#94A3B8] hover:bg-[#1e293b]/50'}`}
             >
-              <MessageCircle size={20} /> <span className="font-medium">호감도 채팅 모드</span>
+              <MessageCircle size={20} /> <span className="font-medium">Remake / Chat 설정</span>
             </button>
             <button
               onClick={() => setActiveTab('danger')}
@@ -287,14 +326,42 @@ export function NovelManagementPage() {
                     <TagField label="태그 관리" name='tags' tags={value} onChange={(key, val) => { onChange(val) }} />
                   )}
                 />
+
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  <h2 className="text-2xl font-bold flex items-center gap-2">
+                    <User className="text-[#FB7185]" /> 메인 캐릭터 원본 설정
+                  </h2>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-[#0f172a] p-5 rounded-xl border border-[#334155] opacity-80">
+                      <label className="text-[11px] font-bold text-[#FB7185] uppercase tracking-wider">Appearance (외형)</label>
+                      <div className="mt-2 text-[#F1F5F9] whitespace-pre-wrap leading-relaxed text-sm">
+                        {novel.characters.find(c => c.role === 'MAIN')?.appearance || "등록된 외형 정보가 없습니다."}
+                      </div>
+                    </div>
+
+                    <div className="bg-[#0f172a] p-5 rounded-xl border border-[#334155] opacity-80">
+                      <label className="text-[11px] font-bold text-[#FB7185] uppercase tracking-wider">Personality (성격 및 특징)</label>
+                      <div className="mt-2 text-[#F1F5F9] whitespace-pre-wrap leading-relaxed text-sm">
+                        {novel.characters.find(c => c.role === 'MAIN')?.personality || "등록된 성격 정보가 없습니다."}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[#94A3B8] italic">
+                    * 위 정보는 소설 생성 시 작성된 기본 설정이며, 본 페이지에서는 수정할 수 없습니다.
+                  </p>
+                </div>
               </div>
+
+
             )}
 
             {activeTab === 'dating' && (
               <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <MessageCircle className="text-[#FB7185]" /> 호감도 채팅 모드
+                    <MessageCircle className="text-[#FB7185]" /> Remake / Chat 모드
                   </h2>
                   <Controller
                     name="isAffinityModeEnabled"
@@ -306,8 +373,8 @@ export function NovelManagementPage() {
                 </div>
 
                 <p className="text-[#94A3B8] bg-[#0f172a] p-4 rounded-lg border-l-4 border-[#FB7185]">
-                  이 모드를 활성화하면 독자들이 메인 캐릭터와 1:1 채팅을 할 수 있습니다.
-                  캐릭터의 성격 설정에 따라 AI가 대화하며 호감도를 쌓습니다.
+                  이 모드를 활성화하면 독자들이 내 소설을 리메이크 하거나 메인 캐릭터와 호감도 모드를 이용할 수 있습니다.
+                  설정을 상세히 작성할수록 독자들의 경험이 풍부해집니다.
                 </p>
 
                 {allValues.isAffinityModeEnabled && (
@@ -364,6 +431,57 @@ export function NovelManagementPage() {
                           onChange={(e) => onChange(e.target.value)} />
                       )}
                     />
+                    <div className="space-y-4 pt-6 border-t border-[#334155]">
+                      <div className="flex justify-between items-center">
+                        <label className="text-sm font-bold text-slate-400 flex items-center gap-2">
+                          <MessageSquareQuote size={16} className="text-[#FB7185]" />
+                          캐릭터 말투 가이드 (Speech Examples)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={handleFillTemplate} // 아까 말씀드린 템플릿 채우기 함수
+                          className="text-[11px] text-[#FB7185] hover:underline underline-offset-4"
+                        >
+                          예시 양식 불러오기
+                        </button>
+                      </div>
+
+                      <div className="space-y-3">
+                        {/* 안내 문구 박스 */}
+                        <div className="text-xs text-[#94a3b8] leading-relaxed bg-[#0f172a] p-4 rounded-xl border border-[#334155]">
+                          <p className="mb-2 font-bold text-[#F1F5F9]">💡 AI가 관계의 깊이에 따라 다른 목소리를 낼 수 있게 도와주세요.</p>
+                          <p>• 호감도 단계별(낮음/보통/높음)로 특징적인 말투와 대사 예시를 적어주세요.</p>
+                          <p>• 특정 어미(ex. ~인 거냐?, ~다니까!)나 습관적인 감탄사를 포함하면 더 정확해집니다.</p>
+                        </div>
+
+                        <Controller
+                          name="speechExamples"
+                          control={control}
+                          render={({ field: { onChange, value } }) => (
+                            <textarea
+                              value={value}
+                              onChange={onChange}
+                              rows={12}
+                              placeholder={
+                                `## 호감도가 낮을 때 (경계/어색)
+- 무뚝뚝하고 차가운 말투
+예시) "용건만 말해. 바쁘니까."
+
+## 호감도가 보통일 때 (친근/장난)
+- 툭툭 내뱉지만 다정한 말투
+예시) "밥은 먹었냐? 얼굴이 그게 뭐야."
+
+## 호감도가 높을 때 (애정/집착)
+- 부드럽고 솔직해진 말투
+예시) "가지 마. 그냥... 내 옆에 계속 있어주면 안 돼?"`
+                              }
+                              className="w-full bg-[#0f172a] border border-[#334155] rounded-2xl p-6 focus:border-[#fb7185] outline-none leading-relaxed transition-all placeholder:text-slate-600 custom-scrollbar"
+                            />
+                          )}
+                        />
+                      </div>
+                    </div>
+
                   </div>
                 )}
               </div>

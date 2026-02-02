@@ -106,8 +106,6 @@ public class NovelServiceImpl implements NovelService {
 	@Transactional
 	@Override
 	public Long createNovel(NovelCreateRequest request, MultipartFile coverImage, User user) throws Exception {
-
-		log.debug("request:: {}", request);
 		String rename = null;
 		String updatePath = null;
 
@@ -470,7 +468,8 @@ public class NovelServiceImpl implements NovelService {
 	@Transactional
 	@Override
 	public int updateNovelSettings(Long novelId, NovelSettingRequest request) throws Exception {
-		Novel novel = novelRepository.findById(novelId).orElseThrow(() -> new RuntimeException("소설을 찾을 수 없습니다."));
+		Novel novel = novelRepository.findById(novelId)
+		.orElseThrow(() -> new RuntimeException("소설을 찾을 수 없습니다."));
 
 		// null 값 제외한 일반 필드 업데이트
 		novel.updateSettings(request);
@@ -492,7 +491,7 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 정보 + 프로필 이미지 처리
 		if (request.getMainCharId() != null) {
 			Character mainChar = characterRepository.findById(request.getMainCharId())
-					.orElseThrow(() -> new RuntimeException("캐릭터를 찾을 수 없습니다."));
+				.orElseThrow(() -> new RuntimeException("캐릭터를 찾을 수 없습니다."));
 
 			// 일반 정보 null 제외 업데이트 처리
 			if (request.getStatusMessage() != null)
@@ -503,6 +502,8 @@ public class NovelServiceImpl implements NovelService {
 				mainChar.setFirstSceneContent(request.getFirstSceneContent());
 			if (request.getFirstSceneLocation() != null) 
 				mainChar.setFirstSceneLocation(request.getFirstSceneLocation());
+			if (request.getSpeechExamples() != null) 
+				mainChar.setSpeechExamples(request.getSpeechExamples());
 
 			MultipartFile profileImage = request.getProfileImageUrl();
 			String profileRename = null;
@@ -511,7 +512,6 @@ public class NovelServiceImpl implements NovelService {
 				profileImage.transferTo(new File(charProfileFolderPath + profileRename));
 				mainChar.setProfileImageUrl(charProfileWebPath + profileRename);
 			}
-
 		}
 
 		return 1;

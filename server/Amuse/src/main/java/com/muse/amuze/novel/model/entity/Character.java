@@ -73,6 +73,9 @@ public class Character extends BaseTimeEntity {
     
     @Column(columnDefinition = "TEXT")
     private String firstSceneLocation;
+
+    @Column(name = "speech_examples", columnDefinition = "TEXT")
+    private String speechExamples;
    
     
     // 호감도 계산

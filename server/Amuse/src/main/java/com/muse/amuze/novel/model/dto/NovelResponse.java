@@ -58,12 +58,14 @@ public class NovelResponse {
 		private CharacterRole role; // USER 또는 MAIN
 		private String gender; // 캐릭터 성별
 		private int affinity; // (소설)현재 호감도
+		private String appearance; // (소설/뮤즈) 외형
 		private String personality; // (소설/뮤즈)성격/특징 (AI 프롬프트용)
 		private String profileImageUrl; // 프로필 이미지
 		private int profileImagePosY; // (뮤즈)프로필 이미지 좌표
 		private String statusMessage; // (뮤즈)프로필 상태메시지
 		private String firstSceneContent; // (뮤즈)첫장면 서사
 		private String firstSceneLocation; // (뮤즈)첫장면 위치
+		private String speechExamples; // 말투 
 	}
 
 	@Getter

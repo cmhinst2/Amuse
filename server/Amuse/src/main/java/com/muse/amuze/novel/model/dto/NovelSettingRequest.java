@@ -24,4 +24,5 @@ public class NovelSettingRequest {
     private String statusMessage;
     private String firstSceneContent;
     private String firstSceneLocation;
+    private String speechExamples;
 }

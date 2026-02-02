@@ -229,7 +229,6 @@ export function StudioWriteContent() {
       }
 
       toast.success("서사가 다시 쓰여졌습니다.");
-
     },
     onError: (err, variables, context) => {
       if (context?.previousScenes) {

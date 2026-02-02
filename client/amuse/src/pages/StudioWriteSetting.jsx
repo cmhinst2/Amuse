@@ -23,10 +23,9 @@ export default function StudioWriteSetting() {
     description: '',
     worldSetting: '', // 세계관 전용 필드
     characters: [
-      { name: '', role: 'MAIN', gender: 'M', personality: '', appearance: '' }, // 기본 메인 캐릭터
-      { name: '', role: 'USER', gender: 'F', personality: '', appearance: '' }  // 기본 사용자 캐릭터
+      { name: '', role: 'MAIN', gender: 'M', personality: '', appearance: '', relationshipLevel: 'ACQUAINTANCE'}, // 기본 메인 캐릭터
+      { name: '', role: 'USER', gender: 'F', personality: '', appearance: '', relationshipLevel: 'ACQUAINTANCE'}  // 기본 사용자 캐릭터
     ],
-    relationshipLevel: 'ACQUAINTANCE',
     firstSceneInput: ''
   });
 
@@ -138,7 +137,6 @@ export default function StudioWriteSetting() {
         worldSetting: data.worldSetting,
         characters: data.characters,
         firstScene: data.firstSceneInput,
-        relationshipLevel : data.relationshipLevel,
       });
 
       // Blob 생성 시 한글 깨짐 방지를 위해 UTF-8 명시 (선택사항이나 권장)
