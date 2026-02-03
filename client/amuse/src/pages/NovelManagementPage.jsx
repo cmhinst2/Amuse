@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { Sidebar } from "../components/Form";
-import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plus, ImageIcon, MessageSquareQuote, User } from "lucide-react";
+import { ArrowLeft, Camera, Globe, MessageCircle, Save, Settings, Trash2, X, Plus, ImageIcon, MessageSquareQuote, User, Info } from "lucide-react";
 import amuseAPI from "../api/amuseAPI";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { CoverImageField } from "../components/CoverImageField";
@@ -9,6 +9,7 @@ import { useForm, Controller, Watch } from 'react-hook-form';
 import { toast } from "sonner";
 import ProfileImageField from "../components/ProfileImageField";
 import { getJosa } from "../api/util";
+import { useNovel } from "../hooks/useNovel";
 
 export function NovelManagementPage() {
   const { novelId } = useParams(); // url의 novelId 얻어오기
@@ -19,9 +20,7 @@ export function NovelManagementPage() {
   const [activeTab, setActiveTab] = useState('basic'); // 'basic', 'dating', 'danger'
 
   // <data fetch>
-  const { data: novel, isLoading: isNovelLoading, isError } = useQuery({
-    queryKey: ['novel', novelId],
-    queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+  const { data: novel, isLoading: isNovelLoading, isError } = useNovel(novelId, {
     enabled: !!novelId,
     staleTime: 1000 * 60 * 5,
     retry: false,
@@ -37,6 +36,7 @@ export function NovelManagementPage() {
       tags: novel.tags,
       isShared: novel.shared,
       isDelete: novel.delete,
+      authorNote: novel.authorNote,
       isAffinityModeEnabled: novel.affinityModeEnabled,
       mainCharId: novel.characters.find((c) => c.role == 'MAIN').id,
       mainCharName: novel.characters.find((c) => c.role == 'MAIN').name,
@@ -108,7 +108,7 @@ export function NovelManagementPage() {
     // 이미 호감도 모드일 때 또는 채팅모드를 활성화로 수정할 때  
     if (allValues['isAffinityModeEnabled'] === true || formData.get('isAffinityModeEnabled') === 'true') {
 
-      // formData에 값이 없는데 allValues에는 있는 경우(이전 호감도 모드에서 작성해둔 내용) 보정
+      // formData에 값이 없는데 allValues에는 있는 경우(이전 Muse 모드에서 작성해둔 내용) 보정
       if (!formData.get('firstSceneContent') && allValues['firstSceneContent']?.trim()) {
         formData.set('firstSceneContent', allValues['firstSceneContent']);
       }
@@ -121,7 +121,7 @@ export function NovelManagementPage() {
       const location = formData.get('firstSceneLocation')?.toString().trim() || "";
 
       if (!content || !location) {
-        toast("호감도 모드에서는 첫 장면과 장소가 필수입니다!", {
+        toast("Muse 모드에서는 첫 장면과 장소가 필수입니다!", {
           style: {
             backgroundColor: '#ea4747',
             color: '#F1F5F9'
@@ -319,6 +319,7 @@ export function NovelManagementPage() {
                     <TextAreaField label="작품 설명" name='description' placeholder='작품 설명을 작성해주세요.' value={value} onChange={(e) => onChange(e.target.value)} />
                   )}
                 />
+
                 <Controller
                   name="tags"
                   control={control}
@@ -327,20 +328,40 @@ export function NovelManagementPage() {
                   )}
                 />
 
+                <Controller
+                  name="authorNote"
+                  control={control}
+                  render={({ field: { onChange, value } }) => (
+                    <TextAreaField
+                      label="작가의 한마디"
+                      name='authorNote'
+                      placeholder='독자들에게 전하고 싶은 메시지를 남겨보세요. (예: 매주 화요일 연재됩니다!)'
+                      value={value}
+                      onChange={(e) => onChange(e.target.value)}
+                      rows={3}
+                    />
+                  )}
+                />
+
                 <div className="space-y-6 animate-in fade-in duration-300">
-                  <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <User className="text-[#FB7185]" /> 메인 캐릭터 원본 설정
-                  </h2>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-2xl font-bold flex items-center gap-2">
+                      <User className="text-[#FB7185]" /> 메인 캐릭터 원본 설정
+                    </h2>
+                    <span className="text-[10px] bg-[#334155] text-[#94A3B8] px-2 py-0.5 rounded-full border border-[#1e293b]">
+                      READ ONLY
+                    </span>
+                  </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="bg-[#0f172a] p-5 rounded-xl border border-[#334155] opacity-80">
+                    <div className="max-h-[350px] bg-[#0f172a] p-5 rounded-xl border border-[#334155] opacity-80 overflow-y-auto custom-scrollbar">
                       <label className="text-[11px] font-bold text-[#FB7185] uppercase tracking-wider">Appearance (외형)</label>
                       <div className="mt-2 text-[#F1F5F9] whitespace-pre-wrap leading-relaxed text-sm">
                         {novel.characters.find(c => c.role === 'MAIN')?.appearance || "등록된 외형 정보가 없습니다."}
                       </div>
                     </div>
 
-                    <div className="bg-[#0f172a] p-5 rounded-xl border border-[#334155] opacity-80">
+                    <div className="max-h-[350px] bg-[#0f172a] p-5 rounded-xl border border-[#334155] opacity-80 overflow-y-auto custom-scrollbar">
                       <label className="text-[11px] font-bold text-[#FB7185] uppercase tracking-wider">Personality (성격 및 특징)</label>
                       <div className="mt-2 text-[#F1F5F9] whitespace-pre-wrap leading-relaxed text-sm">
                         {novel.characters.find(c => c.role === 'MAIN')?.personality || "등록된 성격 정보가 없습니다."}
@@ -352,6 +373,30 @@ export function NovelManagementPage() {
                     * 위 정보는 소설 생성 시 작성된 기본 설정이며, 본 페이지에서는 수정할 수 없습니다.
                   </p>
                 </div>
+
+                <div className="space-y-4 animate-in fade-in duration-500">
+                  <div className="flex items-center gap-2">
+                    <Globe size={20} className="text-[#FB7185]" />
+                    <h2 className="text-2xl font-bold text-[#F1F5F9]">작품 세계관 설정</h2>
+                    <span className="text-[10px] bg-[#334155] text-[#94A3B8] px-2 py-0.5 rounded-full border border-[#1e293b]">
+                      READ ONLY
+                    </span>
+                  </div>
+
+                  <div className="relative group">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FB7185]/20 to-transparent rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
+
+                    <div className="max-h-[300px] relative bg-[#0f172a] border border-[#334155] rounded-2xl p-6 shadow-inner overflow-y-auto custom-scrollbar">
+                      <div className="prose prose-invert max-w-none text-sm leading-relaxed text-[#94A3B8] whitespace-pre-wrap">
+                        {novel.worldSetting || "등록된 세계관 정보가 없습니다. 소설의 핵심 배경과 규칙이 이곳에 표시됩니다."}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] text-[#475569] flex items-center gap-1 px-1">
+                    <Info size={12} /> 세계관 설정은 소설 생성 단계에서 확정되며, 관리 페이지에서는 조회만 가능합니다.
+                  </p>
+                </div>
               </div>
 
 
@@ -361,7 +406,7 @@ export function NovelManagementPage() {
               <div className="space-y-8 animate-in fade-in duration-300">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold flex items-center gap-2">
-                    <MessageCircle className="text-[#FB7185]" /> Remake / Chat 모드
+                    <MessageCircle className="text-[#FB7185]" /> Muse 모드
                   </h2>
                   <Controller
                     name="isAffinityModeEnabled"
@@ -373,7 +418,7 @@ export function NovelManagementPage() {
                 </div>
 
                 <p className="text-[#94A3B8] bg-[#0f172a] p-4 rounded-lg border-l-4 border-[#FB7185]">
-                  이 모드를 활성화하면 독자들이 내 소설을 리메이크 하거나 메인 캐릭터와 호감도 모드를 이용할 수 있습니다.
+                  Muse 모드를 활성화하면 독자들이 내 소설을 리메이크 하거나 메인 캐릭터와 호감도 채팅을 이용할 수 있습니다.
                   설정을 상세히 작성할수록 독자들의 경험이 풍부해집니다.
                 </p>
 
@@ -439,7 +484,7 @@ export function NovelManagementPage() {
                         </label>
                         <button
                           type="button"
-                          onClick={handleFillTemplate} // 아까 말씀드린 템플릿 채우기 함수
+                          onClick={handleFillTemplate}
                           className="text-[11px] text-[#FB7185] hover:underline underline-offset-4"
                         >
                           예시 양식 불러오기
@@ -492,7 +537,7 @@ export function NovelManagementPage() {
                 <h2 className="text-2xl font-bold text-red-400">작품 삭제</h2>
                 <div className="p-6 border border-red-900/30 bg-red-900/10 rounded-xl">
                   <p className="text-red-200">
-                    작품을 삭제하면 모든 소설 내용, 대화 내역, 호감도 데이터가 영구히 삭제됩니다.
+                    작품을 삭제하면 모든 소설 내용, 대화 내역, Muse 데이터가 영구히 삭제됩니다.
                     이 작업은 되돌릴 수 없습니다.
                   </p>
                   <button onClick={handleDelete}
@@ -540,7 +585,7 @@ const TextAreaField = ({ label, value, name, onChange, placeholder }) => (
       rows="4"
       name={name}
       onChange={onChange}
-      value={value}
+      value={value || ""}
       className={`w-full bg-[#0f172a] text-[#F1F5F9] border border-[#334155] rounded-xl p-3 focus:border-[#FB7185] outline-none resize-none`} />
   </div>
 );

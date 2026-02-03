@@ -70,6 +70,9 @@ public class ChatRoom extends BaseTimeEntity{
     @Builder.Default
     @Column(name = "relationship_status", length = 50)
     private String relationshipStatus = "낯선 사람";
+
+    @Column(name = "room_mode")
+    private String roomMode; 
     
     //---------------------
     

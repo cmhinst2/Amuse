@@ -183,7 +183,7 @@ export const NovelList = ({ data, isOwner }) => {
               </span>
               <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
                 ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                Remake / Chat {novel.affinityModeEnabled ? 'ON' : 'OFF'}
+                Muse {novel.affinityModeEnabled ? 'ON' : 'OFF'}
               </span>
             </div>
           </div>

@@ -74,40 +74,42 @@ public class NovelController {
 		StoryScene lastScene = novelService.findLastSceneByNovelId(novelId);
 		
 		return ResponseEntity.ok(NovelResponse.builder()
-	            .id(novel.getId())
-	            .title(novel.getTitle())
-	            .description(novel.getDescription())
-	            .coverImageUrl(novel.getCoverImageUrl())
-	            .coverImagePosY(novel.getCoverImagePosY())
-	            .totalSummary(novel.getTotalSummary())
-	            .characters(characters.stream()
-								.map(c -> NovelResponse.CharacterInfoDTO.builder()
-									.id(c.getId())
-									.name(c.getName())
-									.role(c.getRole())
-									.affinity(c.getAffinity())
-									.personality(c.getPersonality())
-									.appearance(c.getAppearance())
-									.speechExamples(c.getSpeechExamples())
-									.profileImageUrl(c.getProfileImageUrl())
-									.profileImagePosY(c.getProfileImagePosY())
-									.statusMessage(c.getStatusMessage())
-									.firstSceneContent(c.getFirstSceneContent())
-									.firstSceneLocation(c.getFirstSceneLocation())
-									.build())
-								.toList())
-	            .lastScene(NovelResponse.SceneInfoDTO.builder()
-									.id(lastScene.getId())
-									.content(lastScene.getAiOutput())
-									.sequenceOrder(lastScene.getSequenceOrder())
-									.build())
-	            .tags(new ArrayList<>(novel.getTags()))
-	            .authorId(novel.getAuthor().getId())
-	            .authorName(novel.getAuthor().getNickname())
-	            .isShared(novel.isShared())
-	            .isDelete(novel.isDelete())
-	            .isAffinityModeEnabled(novel.isAffinityModeEnabled())
-	            .build());
+						.id(novel.getId())
+						.title(novel.getTitle())
+						.description(novel.getDescription())
+						.coverImageUrl(novel.getCoverImageUrl())
+						.coverImagePosY(novel.getCoverImagePosY())
+						.totalSummary(novel.getTotalSummary())
+						.worldSetting(novel.getWorldSetting())
+						.authorNote(novel.getAuthorNote())
+						.characters(characters.stream()
+							.map(c -> NovelResponse.CharacterInfoDTO.builder()
+								.id(c.getId())
+								.name(c.getName())
+								.role(c.getRole())
+								.affinity(c.getAffinity())
+								.personality(c.getPersonality())
+								.appearance(c.getAppearance())
+								.speechExamples(c.getSpeechExamples())
+								.profileImageUrl(c.getProfileImageUrl())
+								.profileImagePosY(c.getProfileImagePosY())
+								.statusMessage(c.getStatusMessage())
+								.firstSceneContent(c.getFirstSceneContent())
+								.firstSceneLocation(c.getFirstSceneLocation())
+								.build())
+							.toList())
+						.lastScene(NovelResponse.SceneInfoDTO.builder()
+								.id(lastScene.getId())
+								.content(lastScene.getAiOutput())
+								.sequenceOrder(lastScene.getSequenceOrder())
+								.build())
+						.tags(new ArrayList<>(novel.getTags()))
+						.authorId(novel.getAuthor().getId())
+						.authorName(novel.getAuthor().getNickname())
+						.isShared(novel.isShared())
+						.isDelete(novel.isDelete())
+						.isAffinityModeEnabled(novel.isAffinityModeEnabled())
+						.build());
 	}
 	
 	/** 다음 장면 생성하기(AI)
@@ -186,7 +188,7 @@ public class NovelController {
 												@ModelAttribute NovelSettingRequest request) throws Exception{
 		
 		int result = novelService.updateNovelSettings(novelId, request);
-		return ResponseEntity.ok("소설 정보 업데이트 성공");
+		return ResponseEntity.ok("소설 정보 업데이트 성공 :: " + result);
 	}
 	
 	/** 소설 삭제
@@ -196,6 +198,6 @@ public class NovelController {
 	@PatchMapping("{novelId}/delete")
 	public ResponseEntity<?> deleteNovel(@PathVariable("novelId") Long novelId) {
 		int result = novelService.deleteNovel(novelId);
-		return ResponseEntity.ok("소설 삭제 성공");
+		return ResponseEntity.ok("소설 삭제 성공 :: " + result);
 	}
 }

@@ -1,18 +1,17 @@
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Form";
 import { toast } from 'sonner';
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import amuseAPI from "../api/amuseAPI";
 import { useEffect, useState } from "react";
 import { LoadingScreen } from "../components/Spinner";
-import { formatCount, getJosa, getServerBaseUrl, replaceNicknameWithJosa } from "../api/util";
-import { BookOpen, Eye, Heart, MessageCircle, X, UserCircle, ArrowRight } from "lucide-react";
+import { formatCount, getJosa, getServerBaseUrl } from "../api/util";
+import { BookOpen, Eye, Heart, MessageCircle, X } from "lucide-react";
 import useAuthStore from "../store/authStore";
 
 export function Library() {
   // store
   const isLoggedIn = useAuthStore((state) => state.isLoggedIn);
-  const { id } = useAuthStore(state => state.userInfo) || {};
 
   // states
   const [order, setOrder] = useState('lastest'); // lastest, likes, views
@@ -98,77 +97,7 @@ export function Library() {
           </div>
 
           {/* 작품 */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
-            {novels.map((novel, index) => (
-              <div
-                key={`${novel.id}_${index}`}
-                className="group relative flex flex-col transition-all duration-300"
-              >
-                <div onClick={() => handleClickNovel(novel)}
-                  className="cursor-pointer relative z-10 w-full aspect-[3/4] rounded-r-lg overflow-hidden shadow-[10px_10px_20px_rgba(0,0,0,0.5)] group-hover:-translate-y-2 transition-all duration-300">
-                  {novel.coverImageUrl ? (
-                    <img
-                      src={getServerBaseUrl(novel.coverImageUrl)}
-                      alt={novel.title}
-                      className="w-full h-full object-cover"
-                      style={{ objectPosition: `center ${novel.coverImagePosY}%` }}
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-[#1e293b] flex items-center justify-center border border-[#334155]">
-                      <span className="text-[#FB7185]/20 font-serif italic text-2xl">Amuse</span>
-                    </div>
-                  )}
-
-                  <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent p-4 flex flex-col justify-end transform transition-transform duration-300 translate-y-4 group-hover:translate-y-0">
-                    <h1 className="text-xl text-[#F1F5F9] font-bold mb-1 drop-shadow-md">
-                      {novel.mainChar.name || "미정 캐릭터"}
-                    </h1>
-                    <p className="text-[#F1F5F9] text-[13px] leading-snug line-clamp-3 mb-1 font-medium opacity-100 transition-opacity duration-300">
-                      {novel.description || "Amuse의 신작 소설을 즐기세요."}
-                    </p>
-                    <div className="h-[2px] w-6 bg-[#FB7185] rounded-full mt-3 mb-4 shadow-[0_0_8px_#FB7185]" />
-                  </div>
-
-                  <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
-                    <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
-                      ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                      Remake / Chat {novel.affinityModeEnabled ? 'ON' : 'OFF'}
-                    </span>
-                    <span className="flex gap-4">
-                      <div className="flex items-center gap-1">
-                        <Heart size={15} />
-                        <span className="text-sm font-medium text-[#F1F5F9]">{formatCount(novel.likeCount)}</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Eye size={15} />
-                        <span className="text-sm font-medium text-[#F1F5F9]">{formatCount(novel.viewCount)}</span>
-                      </div>
-                    </span>
-                  </div>
-                </div>
-                <div className="mt-4 px-1" >
-                  <div className="flex flex-col">
-                    <section onClick={() => navigate(`/studio/write/${novel.id}`)} className="flex items-center justify-between mb-4 cursor-pointer ">
-                      <h4 className="text-xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
-                        {novel.title}
-                      </h4>
-                      <span className={`text-[13px] font-medium px-2 py-0.5 rounded border ${novel.status == 'PROCESS'
-                        ? 'text-[#2DD4BF] border-[#2DD4BF]/30 bg-[#10B981]/5'
-                        : 'text-[#94A3B8] border-[#334155]'
-                        }`}>
-                        {novel.status === 'PROCESS' ? '연재 중' : '완결'}
-                      </span>
-                    </section>
-                    <section className="flex gap-2 mb-2">
-                      {novel.tags.map((tag, idx) => (
-                        <span className="text-[13px] px-2 rounded-lg text-[#F1F5F9] bg-[#4f46e5]" key={`${tag}_${idx}`}>#{tag}</span>
-                      ))}
-                    </section>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          <NovelListComponent novels={novels} handler={handleClickNovel} />
           {/* 모달 */}
           {selectedNovel && (
             <NovelActionModal novel={selectedNovel} onClose={() => setSelectedNovel(null)} />
@@ -179,21 +108,87 @@ export function Library() {
   )
 }
 
+// 작품 리스트 컴포넌트
+export const NovelListComponent = ({ novels, handler }) => {
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6">
+      {novels.map((novel, index) => (
+        <div
+          key={`${novel.id}_${index}`}
+          className="group relative flex flex-col transition-all duration-300"
+        >
+          <div onClick={() => handler(novel)}
+            className="cursor-pointer relative z-10 w-full aspect-[3/4] rounded-r-lg overflow-hidden shadow-[10px_10px_20px_rgba(0,0,0,0.5)] group-hover:-translate-y-2 transition-all duration-300">
+            {novel.coverImageUrl ? (
+              <img
+                src={getServerBaseUrl(novel.coverImageUrl)}
+                alt={novel.title}
+                className="w-full h-full object-cover"
+                style={{ objectPosition: `center ${novel.coverImagePosY}%` }}
+              />
+            ) : (
+              <div className="w-full h-full bg-[#1e293b] flex items-center justify-center border border-[#334155]">
+                <span className="text-[#FB7185]/20 font-serif italic text-2xl">Amuse</span>
+              </div>
+            )}
+
+            <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent p-4 flex flex-col justify-end transform transition-transform duration-300 translate-y-4 group-hover:translate-y-0">
+              <h1 className="text-xl text-[#F1F5F9] font-bold mb-1 drop-shadow-md">
+                {novel.mainChar.name || "미정 캐릭터"}
+              </h1>
+              <p className="text-[#F1F5F9] text-[13px] leading-snug line-clamp-3 mb-1 font-medium opacity-100 transition-opacity duration-300">
+                {novel.description || "Amuse의 신작 소설을 즐기세요."}
+              </p>
+              <div className="h-[2px] w-6 bg-[#FB7185] rounded-full mt-3 mb-4 shadow-[0_0_8px_#FB7185]" />
+            </div>
+
+            <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
+              <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
+                      ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                Muse {novel.affinityModeEnabled ? 'ON' : 'OFF'}
+              </span>
+              <span className="flex gap-4 px-2 py-0.5 rounded-md font-bold backdrop-blur-md bg-slate-700/20 text-slate-200">
+                <div className="flex items-center gap-1">
+                  <Heart size={15} />
+                  <span className="text-sm font-medium text-[#F1F5F9]">{formatCount(novel.likeCount)}</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <Eye size={15} />
+                  <span className="text-sm font-medium text-[#F1F5F9]">{formatCount(novel.viewCount)}</span>
+                </div>
+              </span>
+            </div>
+          </div>
+          <div className="mt-4 px-1" >
+            <div className="flex flex-col">
+              <section onClick={() => navigate(`/studio/write/${novel.id}`)} className="flex items-center justify-between mb-4 cursor-pointer ">
+                <h4 className="text-xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
+                  {novel.title}
+                </h4>
+                <span className={`text-[13px] font-medium px-2 py-0.5 rounded border ${novel.status == 'PROCESS'
+                  ? 'text-[#2DD4BF] border-[#2DD4BF]/30 bg-[#10B981]/5'
+                  : 'text-[#94A3B8] border-[#334155]'
+                  }`}>
+                  {novel.status === 'PROCESS' ? '연재 중' : '완결'}
+                </span>
+              </section>
+              <section className="flex gap-2 mb-2">
+                {novel.tags.map((tag, idx) => (
+                  <span className="text-[13px] px-2 rounded-lg text-[#F1F5F9] bg-[#4f46e5]" key={`${tag}_${idx}`}>#{tag}</span>
+                ))}
+              </section>
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 // 모달 컴포넌트
-const NovelActionModal = ({ novel, onClose }) => {
+export const NovelActionModal = ({ novel, onClose }) => {
   const [isVisible, setIsVisible] = useState(false);
   const navigate = useNavigate();
-
-  // data fetch
-  // 해당 소설에서 생성된 기존 채팅방 체크
-  // const { refetch: checkChatRoom } = useQuery({
-  //   queryKey: ['muse', 'chatRoom', 'check', novel.id, id],
-  //   queryFn: async () => {
-  //     const res = await amuseAPI.get(`/api/muse/check/${novel.id}/${id}`);
-  //     return res.data;
-  //   },
-  //   enabled: false,
-  // });
 
   // 소설 읽기 페이지로 이동
   const handleReadNovel = () => {
@@ -201,20 +196,9 @@ const NovelActionModal = ({ novel, onClose }) => {
     onClose();
   };
 
-
-
   // 대화하기 버튼 클릭 핸들러
   const handleStartChat = async (selectedNovel) => {
     navigate(`/muse/description/${selectedNovel.mainChar.id}`);
-    //const { data: existingRoom } = await checkChatRoom();
-
-    // if (existingRoom && existingRoom !== '') { // 채팅방 존재 시
-    //   navigate(`/muse/${selectedNovel.id}/chat/${existingRoom.roomId}`);
-    //   onClose();
-    // } else {
-    //   // 닉네임 입력받기 모달창 오픈
-    //   setIsNicknameOpen(true);
-    // }
   };
 
   // 카드 애니메이션 트리거
@@ -294,7 +278,7 @@ const NovelActionModal = ({ novel, onClose }) => {
             <p className="text-[12px] text-[#94A3B8]">{getJosa(novel.mainChar.name, '과', '와')}의 대화에서 몰입을 위해 소설 읽기를 추천드려요💕</p>
           </div>}
       </article>
-      
+
     </div>
   );
 };

@@ -75,7 +75,7 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/** 캐릭터 유무 확인
+	/** 캐릭터 정보 조회
 	 * @param request
 	 * @return
 	 */

@@ -22,6 +22,10 @@ import { MuseChat } from "../pages/MuseChat";
 import { MyMuseList } from "../pages/MyMuseList";
 import { useEffect } from "react";
 import MuseDescription from "../pages/MuseDescription";
+import MuseRemake from "../pages/MuseRemake";
+import { useChatRoom } from "../hooks/useChatRoom";
+import { useCharacter } from "../hooks/useCharacter";
+import { useNovel } from "../hooks/useNovel";
 
 
 export default function Layout() {
@@ -49,7 +53,8 @@ export default function Layout() {
                     <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
                     <Route path="/muse" element={<MyMuseList />} />
                     <Route path="/muse/description/:characterId" element={<CharacterAuthGuard><MuseDescription /></CharacterAuthGuard>} />
-                    <Route path="/muse/:novelId/chat/:roomId" element={<ChatAuthGuard><MuseChat /></ChatAuthGuard>} />
+                    <Route path="/muse/:novelId/chat/:roomId" element={<MuseAuthGuard><MuseChat /></MuseAuthGuard>} />
+                    <Route path="/muse/:novelId/novel/:roomId" element={<MuseAuthGuard><MuseRemake /></MuseAuthGuard>} />
                     <Route path="/favorites" element={<Favorites />} />
                     <Route path="/ticket" element={<Ticket />} />
                     <Route path="/setting" element={<Setting />} />
@@ -83,15 +88,10 @@ const NovelAuthorGuard = ({ children }) => {
   const navigate = useNavigate();
   const userInfo = useAuthStore((state) => state.userInfo); // 현재 로그인 유저 정보
 
-  const { data: novel, isLoading, isError } = useQuery({
-    queryKey: ['novel', novelId],
-    queryFn: async () => {
-      const res = await amuseAPI.get(`/api/novel/${novelId}`);
-      return res.data;
-    },
+  const { data: novel, isLoading, isError } = useNovel(novelId, {
     retry: false,
     staleTime: 1000 * 60 * 60,
-    enabled: !!novelId && !!userInfo?.id,
+    enabled: !!novelId && !!userInfo?.id
   });
 
   useEffect(() => {
@@ -115,28 +115,21 @@ const NovelAuthorGuard = ({ children }) => {
   return children;
 };
 
-// Chat 모드 판별 가드 컴포넌트
-const ChatAuthGuard = ({ children }) => {
+// Muse 모드 판별 가드 컴포넌트
+const MuseAuthGuard = ({ children }) => {
   const { novelId, roomId } = useParams();
   const navigate = useNavigate();
   const { id: currentUserId } = useAuthStore((state) => state.userInfo);
 
-  // 소설 데이터 조회(호감도 모드 유무 확인)
-  const { data: novel, isLoading: isNovelLoading, isError: isNovelError } = useQuery({
-    queryKey: ['novel', novelId],
-    queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+  // 소설 데이터 조회(Muse 모드 유무 확인)
+  const { data: novel, isLoading: isNovelLoading, isError: isNovelError } = useNovel(novelId, {
     retry: false,
     staleTime: 1000 * 60 * 60,
     enabled: !!novelId
   });
 
   // 채팅방 상세 정보 조회 (권한 및 존재 확인)
-  const { data: chatRoom, isLoading: isRoomLoading, isError: isRoomError } = useQuery({
-    queryKey: ['muse', 'chatRoom', 'detail', roomId],
-    queryFn: () => amuseAPI.get(`/api/muse/room/${roomId}`).then(res => res.data),
-    retry: false,
-    enabled: !!roomId,
-  });
+  const { data: chatRoom, isLoading: isRoomLoading, isError: isRoomError } = useChatRoom(roomId);
 
   useEffect(() => {
     if (isNovelLoading || isRoomLoading) return; // 로딩중 제외
@@ -148,9 +141,9 @@ const ChatAuthGuard = ({ children }) => {
       return;
     }
 
-    // 호감도 모드 활성화 여부
+    // Muse 모드 활성화 여부
     if (!novel.affinityModeEnabled) {
-      alert("호감도 모드가 지원되지 않는 소설입니다!");
+      alert("Muse 모드가 지원되지 않는 소설입니다!");
       navigate('/library', { replace: true });
       return;
     }
@@ -192,9 +185,7 @@ const CharacterAuthGuard = ({ children }) => {
   const navigate = useNavigate();
 
   // 해당 id의 캐릭터가 있는지, 호감도 모드를 지원 유무 확인
-  const { data: character, isLoading, isError, isSuccess } = useQuery({
-    queryKey: ['muse', 'character', characterId],
-    queryFn: () => amuseAPI.get(`/api/muse/${characterId}`).then(res => res.data),
+  const { data: character, isLoading, isError, isSuccess } = useCharacter(characterId, {
     enabled: !!characterId,
     retry: false,
   });
@@ -214,7 +205,7 @@ const CharacterAuthGuard = ({ children }) => {
     }
 
   }, [character, isError, isLoading, navigate])
-  
+
   if (isLoading) return <LoadingScreen text={'캐릭터 정보를 조회 중 입니다...'} />;
 
   return isSuccess && character?.mainChar.id ? children : null;

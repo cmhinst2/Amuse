@@ -26,6 +26,7 @@ public class NovelResponse {
 	private String description; // 소개글
 	private String worldSetting; // 세계관/배경 설정
 	private String totalSummary; // 지금까지의 전체 줄거리 요약
+	private String authorNote; // 작가 노트
 	private String coverImageUrl; // 커버 이미지 Url
 	private int coverImagePosY; // 커버 이미지 y축 좌표값
 	private String status; // 소설 상태(PROCESS, DONE)

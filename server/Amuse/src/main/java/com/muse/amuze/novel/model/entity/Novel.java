@@ -48,6 +48,9 @@ public class Novel extends BaseTimeEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    @Column(columnDefinition = "TEXT")
+    private String authorNote;
+
     @Column(name = "total_summary", columnDefinition = "TEXT")
     private String totalSummary;
 
@@ -94,6 +97,7 @@ public class Novel extends BaseTimeEntity {
 	public void updateSettings(NovelSettingRequest request) {
 		if (request.getTitle() != null) this.title = request.getTitle();
 	    if (request.getDescription() != null) this.description = request.getDescription();
+        if (request.getAuthorNote() != null) this.authorNote = request.getAuthorNote();
 	    if (request.getCoverImagePosY() != null) this.coverImagePosY = request.getCoverImagePosY();
 	    if (request.getIsShared() != null) this.isShared = request.getIsShared();
 	    if (request.getIsDelete() != null) this.isDelete = request.getIsDelete();

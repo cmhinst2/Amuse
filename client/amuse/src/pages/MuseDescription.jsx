@@ -8,6 +8,7 @@ import useAuthStore from '../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 import amuseAPI from '../api/amuseAPI';
 import { toast } from 'sonner';
+import { useCharacter } from '../hooks/useCharacter';
 
 const MuseDescription = () => {
   const { characterId } = useParams();
@@ -20,9 +21,7 @@ const MuseDescription = () => {
   const [isNicknameOpen, setIsNicknameOpen] = useState(false);
 
   // data fetch
-  const { data, isLoading } = useQuery({
-    queryKey: ['muse', 'character', characterId],
-    queryFn: () => amuseAPI.get(`/api/muse/${characterId}`).then(res => res.data),
+  const { data, isLoading } = useCharacter(characterId, {
     enabled: !!characterId,
     staleTime: 1000 * 60 * 5,
   });
@@ -74,6 +73,11 @@ const MuseDescription = () => {
   // 채팅 방 생성 및 이동
   const handleCreateChatRoom = (nickname) => {
     createChatRoom(nickname);
+  }
+
+  // 리메이크 설명 화면으로 이동
+  const handleRemakeNovel = () => {
+    navigate(`/muse/${novel.id}/novel/${roomId}`);
   }
 
   return (
@@ -145,7 +149,7 @@ const MuseDescription = () => {
                 <button onClick={() => setIsNicknameOpen(true)} className="flex-1 max-w-[200px] h-16 bg-[#fb7185] hover:bg-[#f43f5e] text-white rounded-2xl font-black text-lg shadow-2xl shadow-rose-500/30 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
                   <MessageCircle fill="currentColor" size={20} /> 채팅하기
                 </button>
-                <button className="flex-1 max-w-[200px] h-16 bg-[#1e293b] hover:bg-[#334155] text-[#F1F5F9] rounded-2xl font-black text-lg border border-[#334155] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                <button onClick={() => handleRemakeNovel()} className="flex-1 max-w-[200px] h-16 bg-[#1e293b] hover:bg-[#334155] text-[#F1F5F9] rounded-2xl font-black text-lg border border-[#334155] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
                   <BookOpen size={20} /> 리메이크 시작
                 </button>
               </div>
@@ -156,9 +160,7 @@ const MuseDescription = () => {
         <section className="max-w-7xl mx-auto px-12 py-20 relative z-10">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-16">
 
-            {/* Main Content Area */}
             <div className="lg:col-span-2 space-y-16">
-              {/* Synopsis Section */}
               <div className="space-y-8">
                 <div className="flex items-center gap-4">
                   <h2 className="text-3xl font-black text-white">시놉시스</h2>
@@ -215,7 +217,6 @@ const MuseDescription = () => {
                     </div>
                   </div>
 
-                  {/* Author Comment Box */}
                   <div className="space-y-4">
                     <div className="flex items-center justify-between text-[10px] font-black tracking-widest text-[#94a3b8]">
                       <span>AUTHOR'S COMMENT</span>
@@ -223,7 +224,7 @@ const MuseDescription = () => {
                     </div>
                     <div className="relative p-6 rounded-3xl bg-[#0f172a]/60 border border-[#334155] group-hover:border-[#fb7185]/20 transition-all">
                       <p className="text-[15px] text-slate-400 leading-relaxed italic">
-                        {novel?.authorComment || "작가의 한 마디가 등록되지 않았습니다."}
+                        {novel?.authorNote || "작가의 한 마디가 등록되지 않았습니다."}
                       </p>
                     </div>
                   </div>

@@ -10,6 +10,7 @@ import { FormatContent } from "../components/Common";
 import { getJosa, handleAddParentheses } from "../api/util";
 import { useTypingEffect } from "../api/useTypingEffect";
 import { toast } from 'sonner';
+import { useNovel } from "../hooks/useNovel";
 
 // 관계 레벨 설정
 const RELATION_CONFIG = {
@@ -64,10 +65,8 @@ export function StudioWriteContent() {
   const [editInput, setEditInput] = useState(''); // 편집 입력 상태
 
   // <Data fetch>
-  // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등 (TanStack Query)
-  const { data: novelData, isLoading: isNovelLoading, isError } = useQuery({
-    queryKey: ['novel', novelId],
-    queryFn: () => amuseAPI.get(`/api/novel/${novelId}`).then(res => res.data),
+  // 소설 첫 장면 데이터 fetch - 제목, 캐릭터 이름, 호감도 등
+  const { data: novelData, isLoading: isNovelLoading, isError } = useNovel(novelId, {
     enabled: !!novelId, // novelId가 있을 때만 실행
     staleTime: 1000 * 60 * 60, // 1시간 데이터를 유지
     gcTime: 1000 * 60 * 120,    // 2시간 후 메모리에서 삭제
@@ -628,27 +627,27 @@ const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setI
 
   if (!isPending)
     return (
-    <section className="flex items-center gap-2 mb-2">
-      {!isAutoMode && (
+      <section className="flex items-center gap-2 mb-2">
+        {!isAutoMode && (
+          <button
+            onClick={() => handleAddParentheses(textareaRef, setUserInput)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-[#334155] bg-[#1e293b] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#F1F5F9]/30 transition-all animate-fadeIn"
+          >
+            <Type size={14} />
+            (지문 입력)
+          </button>
+        )}
         <button
-          onClick={() => handleAddParentheses(textareaRef, setUserInput)}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-[#334155] bg-[#1e293b] text-[#94A3B8] hover:text-[#F1F5F9] hover:border-[#F1F5F9]/30 transition-all animate-fadeIn"
+          onClick={() => setIsAutoMode(!isAutoMode)}
+          className={`flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-full border transition-all ${isAutoMode
+            ? 'bg-[#FB7185] border-[#FB7185] text-white shadow-[0_0_10px_rgba(251,113,133,0.3)]'
+            : 'bg-[#1e293b] border-[#334155] text-[#94A3B8] hover:border-[#FB7185]/50'
+            }`}
         >
-          <Type size={14} />
-          (지문 입력)
+          <Sparkles size={14} className={isAutoMode ? "animate-pulse" : ""} />
+          자동 전개 {isAutoMode ? 'ON' : 'OFF'}
         </button>
-      )}
-      <button
-        onClick={() => setIsAutoMode(!isAutoMode)}
-        className={`flex items-center gap-1.5 px-4 py-1.5 text-xs rounded-full border transition-all ${isAutoMode
-          ? 'bg-[#FB7185] border-[#FB7185] text-white shadow-[0_0_10px_rgba(251,113,133,0.3)]'
-          : 'bg-[#1e293b] border-[#334155] text-[#94A3B8] hover:border-[#FB7185]/50'
-          }`}
-      >
-        <Sparkles size={14} className={isAutoMode ? "animate-pulse" : ""} />
-        자동 전개 {isAutoMode ? 'ON' : 'OFF'}
-      </button>
-    </section>
+      </section>
     )
 });
 

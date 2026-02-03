@@ -22,8 +22,12 @@ public class MyMuseResponse {
     private LocalDateTime lastMessageAt; // 마지막 대화 시간
     private String currentLocation;  // 최근 장소
     private String status;           // 채팅방 상태 (ACTIVE 등)
+    private String roomMode;        // 채팅방 모드 (AFFINITY / REMAKE)
     
     private boolean isNovelDeleted;   // 소설 삭제 여부
     private boolean isAffinityEnabled; // 호감도 모드 활성화 여부
     private Integer userId; 			// 사용자 id 
+    private String novelTitle;          // 소설 제목
+    private String coverImageUrl;
+    private Integer coverImagePosY;
 }

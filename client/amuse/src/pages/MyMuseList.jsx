@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Sidebar } from "../components/Form";
-import { MessageCircle, Heart, ChevronRight, Clock } from 'lucide-react';
+import { MessageCircle, Heart, ChevronRight, Clock, BookOpen, MapPin } from 'lucide-react';
 import { useQuery } from "@tanstack/react-query";
 import amuseAPI from "../api/amuseAPI";
 import useAuthStore from "../store/authStore";
@@ -28,7 +28,6 @@ export function MyMuseList() {
       <Sidebar />
 
       <main className="flex-1 overflow-y-auto custom-scrollbar">
-        {/* 헤더 */}
         <header className="sticky top-0 z-10 flex items-center justify-between px-8 py-6 bg-[#0f172a]/95 backdrop-blur-md border-b border-[#1e293b]">
           <div className="flex flex-col">
             <h1 className="text-2xl font-black text-[#FB7185] tracking-tight">나의 Muse</h1>
@@ -41,7 +40,6 @@ export function MyMuseList() {
           </div>
         </header>
 
-        {/* 컨텐츠 영역 */}
         <section className="p-8 max-w-5xl mx-auto">
           {myMuses.length > 0 ? (
             <div className="grid gap-4">
@@ -49,46 +47,70 @@ export function MyMuseList() {
                 <div
                   key={`${muse.roomId}_${idx}`}
                   onClick={() => navigate(`/muse/${muse.novelId}/chat/${muse.roomId}`)}
-                  className="group relative bg-[#1e293b]/50 hover:bg-[#1e293b] border border-[#334155] hover:border-[#FB7185]/50 rounded-2xl p-5 transition-all cursor-pointer flex items-center gap-6 shadow-lg hover:shadow-[0_0_20px_rgba(251,113,133,0.1)]"
+                  className="group bg-[#1e293b]/50 hover:bg-[#1e293b] border border-[#334155] hover:border-[#FB7185]/50 rounded-2xl p-5 transition-all cursor-pointer flex items-center gap-6 shadow-lg hover:shadow-[0_0_20px_rgba(251,113,133,0.1)]"
                 >
-                  {/* 캐릭터 프로필 이미지 */}
-                  <div className="relative shrink-0">
+                  <div className="shrink-0">
                     <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#334155] group-hover:border-[#FB7185] transition-colors">
+                      
+                      {muse.roomMode === 'AFFINITY'? 
                       <img src={getServerBaseUrl(muse.profileImageUrl)}
-                       alt={muse.name} 
-                      style={{ objectPosition: `center ${muse.profileImagePosY}%` }} 
-                      className="w-full h-full object-cover" />
+                        alt={muse.name}
+                        style={{ objectPosition: `center ${muse.profileImagePosY}%` }}
+                        className="w-full h-full object-cover" /> :
+                        <img src={getServerBaseUrl(muse.coverImageUrl)}
+                        alt={muse.name}
+                        style={{ objectPosition: `center ${muse.coverImagePosY}%` }}
+                        className="w-full h-full object-cover" />
+                      }
+                      
                     </div>
-                    {/* 온라인/활동 표시 점 */}
-                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-[#2DD4BF] border-4 border-[#0f172a] rounded-full shadow-lg" />
                   </div>
 
-                  {/* 정보 섹션 */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-1">
-                      <h3 className="text-lg font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors">
-                        {muse.name}
-                      </h3>
-                      <span className="flex items-center gap-1 text-[11px] text-[#94A3B8] bg-[#0f172a] px-2 py-0.5 rounded-full">
-                        <Heart size={10} className="text-[#FB7185] fill-[#FB7185]" />
-                        {muse.currentScore}%
-                      </span>
-                      <span className="text-[11px] text-[#94A3B8] bg-[#0f172a] px-2 py-0.5 rounded-full">{muse.relationshipStatus}</span>
+                  <div className="flex flex-col flex-1">
+                    <div className="flex-1 min-w-0">
+                      {muse.roomMode === 'AFFINITY' ?
+                        <>
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-lg font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors">
+                              {muse.name}
+                            </h3>
+                            <span className="flex items-center gap-1 text-[11px] text-[#94A3B8] bg-[#0f172a] px-2 py-0.5 rounded-full border border-[#334155]/30">
+                              <Heart size={10} className="text-[#FB7185] fill-[#FB7185]" />
+                              {muse.currentScore}%
+                            </span>
+                            <span className="text-[11px] text-[#94A3B8] bg-[#0f172a] px-2 py-0.5 rounded-full">{muse.relationshipStatus}</span>
+                          </div>
+                          <p className="text-[#94A3B8] text-sm line-clamp-1 mb-2 italic">
+                            "{muse.lastMessage}"
+                          </p>
+                        </>
+                        :
+                        <>
+                          <div className="flex items-center gap-3 mb-1">
+                            <h3 className="text-lg font-bold text-[#F1F5F9] group-hover:text-blue-400 transition-colors">
+                              {muse.novelTitle} Remake
+                            </h3>
+                          </div>
+                          <p className="text-[#F1F5F9]/70 text-sm line-clamp-1 mb-2 font-medium">
+                            {muse.lastSummary || "새로운 이야기가 시작되었습니다."}
+                          </p>
+                        </>
+                      }
                     </div>
-                    <p className="text-[#94A3B8] text-sm line-clamp-1 mb-2">
-                      {muse.lastMessage}
-                    </p>
                     <div className="flex items-center gap-4 text-[11px] text-[#475569]">
                       <span className="flex items-center gap-1">
                         <Clock size={12} />{formatChatMessageDate(muse.lastMessageAt)}
                       </span>
                       <span className="flex items-center gap-1">
-                        <MessageCircle size={12} /> 최근 장소: {muse.currentLocation}
+                        <MapPin size={12} /> {muse.currentLocation || "시작 지점"}
                       </span>
+                      {muse.room_mode === 'REMAKE' && (
+                        <span className="ml-auto text-[#FB7185] font-bold tracking-tighter uppercase text-[9px]">
+                          Remake Mode
+                        </span>
+                      )}
                     </div>
                   </div>
-
-                  {/* 화살표 아이콘 */}
                   <div className="shrink-0 text-[#334155] group-hover:text-[#FB7185] transition-colors">
                     <ChevronRight size={24} />
                   </div>
@@ -96,7 +118,6 @@ export function MyMuseList() {
               ))}
             </div>
           ) : (
-            /* Empty State (뮤즈가 없을 때) */
             <div className="flex flex-col items-center justify-center py-40 text-center">
               <div className="w-20 h-20 bg-[#1e293b] rounded-full flex items-center justify-center mb-6 text-[#334155]">
                 <Heart size={40} />

@@ -12,6 +12,7 @@ import lombok.ToString;
 public class NovelSettingRequest {
 	private String title;
     private String description;
+    private String authorNote;
     private MultipartFile coverImageUrl;
     private Integer coverImagePosY;
     private List<String> tags;

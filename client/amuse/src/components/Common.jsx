@@ -12,7 +12,7 @@ export const FormatContent = ({text}) => {
     if (part.startsWith('"') && part.endsWith('"')) {
       // 대사 부분: 강조색 (로즈색) 적용
       return (
-        <span key={index} className="font-novel-bold text-[#FB7185] drop-shadow-[0_0_1px_rgba(251,113,133,0.5)]">
+        <span key={index} className="text-[#FB7185] drop-shadow-[0_0_1px_rgba(251,113,133,0.5)]">
           {part}
         </span>
       );
