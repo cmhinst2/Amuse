@@ -25,7 +25,7 @@ public class MyMuseResponse {
     private String roomMode;        // 채팅방 모드 (AFFINITY / REMAKE)
     
     private boolean isNovelDeleted;   // 소설 삭제 여부
-    private boolean isAffinityEnabled; // 호감도 모드 활성화 여부
+    private boolean isMuseMode; // 뮤즈 모드 활성화 여부
     private Integer userId; 			// 사용자 id 
     private String novelTitle;          // 소설 제목
     private String coverImageUrl;

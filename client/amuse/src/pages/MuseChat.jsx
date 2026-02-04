@@ -69,11 +69,12 @@ export function MuseChat() {
               </span>
             </div>
 
-            <div className="text-[#94A3B8] text-ms py-10 px-20 whitespace-pre-wrap">
+            <div className="text-[#94A3B8] text-lg py-10 px-20 whitespace-pre-wrap">
               <FormatContent text={chatRoom.lastMessage} />
             </div>
 
-            <div className="flex gap-3 max-w-[70%] items-start mb-10">
+            {/* AI 답변 */}
+            {/* <div className="flex gap-3 max-w-[70%] items-start mb-10">
               <div onClick={() => setIsOpenProfileModal(true)}
                 className="group w-20 h-20 rounded-full bg-[#334155] shrink-0 border border-[#1e293b] overflow-hidden cursor-pointer transition-all duration-300 hover:border-[#3730a3] hover:shadow-[0_0_15px_rgba(251,113,133,0.4)] hover:scale-105 active:scale-95">
                 <img
@@ -85,19 +86,20 @@ export function MuseChat() {
               </div>
 
               <div className="bg-[#4f46e5] p-4 rounded-2xl rounded-tl-none border border-[#334155] shadow-[0_4px_12px_rgba(251,113,133,0.3)]">
-                <p className="text-ms leading-relaxed whitespace-pre-wrap">
+                <p className="text-lg leading-relaxed whitespace-pre-wrap">
                   뭐라할까ㄴㅎ ㄴㅇㅎㄴㅇㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎㅎ
                 </p>
               </div>
-            </div>
+            </div> */}
 
-            <div className="flex justify-end mb-10">
+            {/* 유저의 답변 */}
+            {/* <div className="flex justify-end mb-10">
               <div className="bg-[#1e293b] p-4 rounded-2xl rounded-tr-none shadow-lg max-w-[70%]">
-                <p className="text-ms font-medium text-white whitespace-pre-wrap">
+                <p className="text-lg font-medium text-white whitespace-pre-wrap">
                   어쩔티비
                 </p>
               </div>
-            </div>
+            </div> */}
           </div>
         </section>
 
@@ -105,7 +107,6 @@ export function MuseChat() {
         <footer className="shrink-0 p-6 border-t border-[#1e293b]">
           <div className="max-w-4xl mx-auto relative flex flex-col items-center gap-3">
             <section className="flex w-full gap-2">
-              {/* !상황, !속마음 */}
               <button
                 onClick={() => handleAddParentheses(textareaRef, setUserInput)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-full border border-[#334155] bg-[#1e293b] text-[#94A3B8] hover:bg-[#4f46e5] hover:text-[#F1F5F9] hover:border-[#F1F5F9]/30 transition-all animate-fadeIn"

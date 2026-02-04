@@ -44,16 +44,10 @@ public class StoryScene extends BaseCreateTimeEntity {
     @Column(name = "key_event")
     private String keyEvent;
 
-    @Column(name = "affinity_at_moment")
-    private Integer affinityAtMoment;
-    
     @Column(name = "is_edited")
     private boolean isEdited;
     
     @Column(name = "is_regenerated")
     private boolean isRegenerated;
-    
-    @Column(name = "affinity_delta")
-    private int affinityDelta; // 해당 장면에서 증감된 호감도 수치
     
 }

@@ -134,6 +134,7 @@ const MuseAuthGuard = ({ children }) => {
   useEffect(() => {
     if (isNovelLoading || isRoomLoading) return; // 로딩중 제외
 
+    console.log(novel);
     // 소설이나 채팅방이 DB에 없는 경우
     if (isNovelError || isRoomError || !chatRoom || !novel) {
       alert("접근할 수 없는 경로입니다.");
@@ -142,7 +143,7 @@ const MuseAuthGuard = ({ children }) => {
     }
 
     // Muse 모드 활성화 여부
-    if (!novel.affinityModeEnabled) {
+    if (!novel.museMode) {
       alert("Muse 모드가 지원되지 않는 소설입니다!");
       navigate('/library', { replace: true });
       return;
@@ -176,7 +177,7 @@ const MuseAuthGuard = ({ children }) => {
 
   }, [novel, chatRoom, isNovelError, isRoomError, currentUserId, navigate, isNovelLoading, isRoomLoading]);
 
-  return (novel?.affinityModeEnabled && chatRoom) ? children : null;
+  return (novel?.museMode && chatRoom) ? children : null;
 }
 
 // Character 판별 가드 컴포넌트
@@ -199,7 +200,7 @@ const CharacterAuthGuard = ({ children }) => {
       return;
     }
 
-    if (character && !character.affinityModeEnabled) {
+    if (character && !character.museMode) {
       alert("이 캐릭터는 호감도 모드를 지원하지 않습니다.");
       navigate('/library', { replace: true });
     }

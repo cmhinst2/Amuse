@@ -62,7 +62,7 @@ public class MuseServiceImpl implements MuseService {
 					.currentLocation(room.getCurrentLocation())
 					.status(room.getStatus())
 					.isNovelDeleted(room.getNovel().isDelete())
-					.isAffinityEnabled(room.getNovel().isAffinityModeEnabled())
+					.isMuseMode(room.getNovel().isMuseMode())
 					.userId(room.getUser().getId())
 					.novelTitle(room.getNovel().getTitle())
 					.roomMode(room.getRoomMode())
@@ -97,7 +97,7 @@ public class MuseServiceImpl implements MuseService {
 				.currentLocation(chatRoom.getCurrentLocation())
 				.status(chatRoom.getStatus())
 				.isNovelDeleted(chatRoom.getNovel().isDelete())
-				.isAffinityEnabled(chatRoom.getNovel().isAffinityModeEnabled())
+				.isMuseMode(chatRoom.getNovel().isMuseMode())
 				.userId(chatRoom.getUser().getId())
 				.build();
 	}
@@ -125,7 +125,7 @@ public class MuseServiceImpl implements MuseService {
 				.currentLocation(chatRoom.getCurrentLocation())
 				.lastMessage(chatRoom.getLastMessage())
 				.lastMessageAt(chatRoom.getLastMessageAt())
-				.isAffinityEnabled(chatRoom.getNovel().isAffinityModeEnabled())
+				.isMuseMode(chatRoom.getNovel().isMuseMode())
 				.status(chatRoom.getStatus())
 				.build();
 	}
@@ -179,7 +179,7 @@ public class MuseServiceImpl implements MuseService {
 				.currentLocation(savedRoom.getCurrentLocation())
 				.status(savedRoom.getStatus())
 				.isNovelDeleted(novel.isDelete())
-				.isAffinityEnabled(novel.isAffinityModeEnabled())
+				.isMuseMode(novel.isMuseMode())
 				.userId(user.getId())
 				.build();
 
@@ -222,7 +222,7 @@ public class MuseServiceImpl implements MuseService {
 				.tags(novel.getTags())
 				.coverImageUrl(novel.getCoverImageUrl())
 				.coverImagePosY(novel.getCoverImagePosY())
-				.isAffinityModeEnabled(novel.isAffinityModeEnabled())
+				.isMuseMode(novel.isMuseMode())
 				.shatredAt(novel.getSharedAt())
 				.build();
 	}

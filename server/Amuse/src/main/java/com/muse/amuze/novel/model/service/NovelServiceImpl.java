@@ -119,8 +119,8 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 설정 정보 요약
 		// AI 컨텍스트용으로 쓰기 위해 캐릭터 리스트를 하나의 텍스트로 합침
 		String combinedSettings = request.getCharacters()
-		.stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
-				c.getName(), c.getRole(), c.getGender(), c.getPersonality(), c.getAppearance()))
+				.stream().map(c -> String.format("[%s / %s / %s]: %s (%s)",
+						c.getName(), c.getRole(), c.getGender(), c.getPersonality(), c.getAppearance()))
 				.collect(Collectors.joining("\n"));
 
 		// 소설 기본 뼈대 저장
@@ -141,25 +141,23 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 개별 엔티티 저장
 		if (request.getCharacters() != null && !request.getCharacters().isEmpty()) {
 			List<Character> characterEntities = request.getCharacters().stream()
-						.map(charDto -> Character.builder()
-						.novel(savedNovel)
-						.name(charDto.getName())
-						.role(charDto.getRole())
-						.personality(charDto.getPersonality())
-						.appearance(charDto.getAppearance())
-						.gender(charDto.getGender())
-						.affinity(0) // 초기 호감도 0
-						.relationshipLevel(charDto.getRelationshipLevel())
-						.build())
+					.map(charDto -> Character.builder()
+							.novel(savedNovel)
+							.name(charDto.getName())
+							.role(charDto.getRole())
+							.personality(charDto.getPersonality())
+							.appearance(charDto.getAppearance())
+							.gender(charDto.getGender())
+							.build())
 					.collect(Collectors.toList());
 			characterRepository.saveAll(characterEntities);
 		}
 
 		// 소설 통계 초기 데이터 생성 (조회수, 좋아요 등)
 		NovelStats stats = NovelStats.builder()
-		.novel(savedNovel)
-		.viewCount(0L)
-		.likeCount(0L).build();
+				.novel(savedNovel)
+				.viewCount(0L)
+				.likeCount(0L).build();
 		novelStatsRepository.save(stats);
 
 		// 유저가 입력한 첫장면 저장
@@ -167,7 +165,7 @@ public class NovelServiceImpl implements NovelService {
 				.userInput(request.getFirstScene()) // 사용자가 입력한 가이드/프롬프트
 				.aiOutput(request.getFirstScene()) // 첫 장면은 사용자가 쓴 내용이 곧 본문
 				.keyEvent("소설의 시작")
-				.affinityAtMoment(0).build();
+				.build();
 		storySceneRepository.save(firstScene);
 
 		return savedNovel.getId();
@@ -218,7 +216,6 @@ public class NovelServiceImpl implements NovelService {
 				// AI 응답 파싱
 				JsonNode rootNode = objectMapper.readTree(jsonResponse);
 				String aiOutput = rootNode.path("ai_output").asText("");
-				int affinityDelta = rootNode.path("affinity_delta").asInt(0);
 				String reason = rootNode.path("reason").asText("");
 				String keyEvent = rootNode.path("key_event").asText("");
 
@@ -230,11 +227,6 @@ public class NovelServiceImpl implements NovelService {
 				Novel novel = ctx.novel();
 				Character mainChar = ctx.mainChar();
 				List<StoryScene> previousScenes = ctx.previousScenes();
-
-				// 호감도 및 관계 등급 업데이트
-				String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
-				mainChar.updateAffinity(affinityDelta); // 호감도 업뎃 후
-				String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
 
 				String finalUserInput = null;
 				if (novelRequest.getContent() == null || novelRequest.getContent().isBlank()) {
@@ -249,9 +241,13 @@ public class NovelServiceImpl implements NovelService {
 				int lastOrder = previousScenes.isEmpty() ? 0
 						: previousScenes.get(previousScenes.size() - 1).getSequenceOrder();
 				// 새로운 장면(Scene) 저장
-				StoryScene newScene = StoryScene.builder().novel(novel).userInput(finalUserInput).aiOutput(aiOutput)
-						.keyEvent(keyEvent).sequenceOrder(lastOrder + 1).affinityAtMoment(mainChar.getAffinity())
-						.build();
+				StoryScene newScene = StoryScene.builder()
+					.novel(novel)
+					.userInput(finalUserInput)
+					.aiOutput(aiOutput)
+					.keyEvent(keyEvent)
+					.sequenceOrder(lastOrder + 1)
+					.build();
 
 				storySceneRepository.save(newScene);
 
@@ -262,7 +258,7 @@ public class NovelServiceImpl implements NovelService {
 				}
 
 				// 응답 DTO 반환
-				return StorySceneResponse.of(newScene, affinityDelta, reason, mainChar, !oldLevel.equals(newLevel));
+				return StorySceneResponse.of(newScene, reason, mainChar);
 
 			} catch (Exception e) {
 				attempt++;
@@ -310,7 +306,6 @@ public class NovelServiceImpl implements NovelService {
 		// 기존장면에서 가져온 이전 호감도 변화 취소
 		// novel의 메인 캐릭터 호감도 복구
 		Character mainChar = ctx.mainChar();
-		mainChar.updateAffinity(-scene.getAffinityDelta()); // 이전 생성된 장면에서의 호감도 마이너스(복구)처리하기
 
 		// AI 전달 message bulider로 생성
 		List<Message> messages = buildMessage(ctx, scene.getUserInput(), false); // 이전에 사용자가 입력했던 값 그대로 다시 보내기
@@ -327,19 +322,13 @@ public class NovelServiceImpl implements NovelService {
 		String reason = rootNode.get("reason").asText();
 		String keyEvent = rootNode.get("key_event").asText();
 
-		String oldLevel = mainChar.getRelationshipLevel(); // 이전 레벨
-		mainChar.updateAffinity(affinityDelta); // character entity 새 호감도 반영
-		String newLevel = mainChar.getRelationshipLevel(); // 최종 레벨
-
 		scene.setAiOutput(aiOutput);
 		scene.setKeyEvent(keyEvent);
-		scene.setAffinityDelta(affinityDelta); // story_scene 새로운 호감도 저장
-		scene.setAffinityAtMoment(mainChar.getAffinity()); // 갱신된 누적 호감도 스냅샷
 
 		scene.setRegenerated(true); // 재생성 체크
 		scene.setEdited(true); // 재생성한 내용은 수정 불가
 
-		return StorySceneResponse.of(scene, affinityDelta, reason, mainChar, !oldLevel.equals(newLevel));
+		return StorySceneResponse.of(scene, reason, mainChar);
 	}
 
 	/**
@@ -360,18 +349,13 @@ public class NovelServiceImpl implements NovelService {
 	@Override
 	public List<NovelResponse> getMyNovelList(int userId) {
 		List<Novel> novelList = novelRepository.findAllByAuthorIdAndIsDeleteFalse(userId);
-
 		List<Long> novelIds = novelList.stream().map(Novel::getId).toList(); // 소설의 id들만 추출
-
 		List<NovelStats> statsList = novelStatsRepository.findStatsByNovelIds(novelIds); // 해당 소설의 통계 정보만 한번에 조회
 		Map<Long, NovelStats> statsMap = statsList.stream().collect(Collectors.toMap(NovelStats::getNovelId, s -> s));
 
 		List<Character> characters = characterRepository.findMainCharactersByNovelIds(novelIds);
 		Map<Long, Character> characterMap = characters.stream()
-				.collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c, (existing, replacement) -> existing // 중복 시
-																													// 기존값
-																													// 유지
-				));
+				.collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c, (existing, replacement) -> existing));
 
 		return novelList.stream().map(novel -> {
 			// 해당 소설의 통계 정보와 캐릭터 정보를 각각 Map에서 꺼냄
@@ -396,32 +380,32 @@ public class NovelServiceImpl implements NovelService {
 
 		// 정렬 조건 설정
 		Sort sort = switch (order) {
-		case "views" -> Sort.by(Sort.Direction.DESC, "ns.viewCount");
-		case "likes" -> Sort.by(Sort.Direction.DESC, "ns.likeCount");
-		default -> Sort.by(Sort.Direction.DESC, "n.sharedAt");
+			case "views" -> Sort.by(Sort.Direction.DESC, "ns.viewCount");
+			case "likes" -> Sort.by(Sort.Direction.DESC, "ns.likeCount");
+			default -> Sort.by(Sort.Direction.DESC, "n.sharedAt");
 		};
 
 		// Pageable 객채 생성 (페이지 0부터 시작)
 		Pageable pageable = PageRequest.of(page, size, sort);
-		
+
 		// Repository에서 엔티티 조회(Author FETCH JOIN)
 		Page<Novel> novelPage = novelRepository.findSharedNovels(pageable);
-		
+
 		List<Long> novelIds = novelPage.getContent().stream().map(Novel::getId).toList();
 		Map<Long, Character> mainCharMap = characterRepository.findMainCharactersByNovelIds(novelIds)
-		        .stream()
-		        .collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c, (a, b) -> a));
-		
+				.stream()
+				.collect(Collectors.toMap(c -> c.getNovel().getId(), c -> c, (a, b) -> a));
+
 		// 엔티티를 NovelListResponse DTO로 변환
-	    return novelPage.map(novel -> {
-	        // 통계 정보 조회 (없으면 0L)
-	        NovelStats stats = novelStatsRepository.findByNovelId(novel.getId()).orElse(null);
-	        
-	        // 메인 캐릭터 정보 추출
-	        Character mainChar = mainCharMap.get(novel.getId());
-	        
-	        return NovelResponse.of(novel, stats, mainChar);
-	    });
+		return novelPage.map(novel -> {
+			// 통계 정보 조회 (없으면 0L)
+			NovelStats stats = novelStatsRepository.findByNovelId(novel.getId()).orElse(null);
+
+			// 메인 캐릭터 정보 추출
+			Character mainChar = mainCharMap.get(novel.getId());
+
+			return NovelResponse.of(novel, stats, mainChar);
+		});
 	}
 
 	/**
@@ -455,7 +439,7 @@ public class NovelServiceImpl implements NovelService {
 		Character mainChar = characterRepository.findByNovelIdAndRole(novelRequest.getNovelId(), CharacterRole.MAIN);
 
 		// -> 두번의 AI 호출됨 (비용 고려해볼것)
-		return StorySceneResponse.of(scene, 0, "직접 수정됨", mainChar, false);
+		return StorySceneResponse.of(scene, "직접 수정됨", mainChar);
 	}
 
 	/**
@@ -469,7 +453,7 @@ public class NovelServiceImpl implements NovelService {
 	@Override
 	public int updateNovelSettings(Long novelId, NovelSettingRequest request) throws Exception {
 		Novel novel = novelRepository.findById(novelId)
-		.orElseThrow(() -> new RuntimeException("소설을 찾을 수 없습니다."));
+				.orElseThrow(() -> new RuntimeException("소설을 찾을 수 없습니다."));
 
 		// null 값 제외한 일반 필드 업데이트
 		novel.updateSettings(request);
@@ -491,18 +475,18 @@ public class NovelServiceImpl implements NovelService {
 		// 캐릭터 정보 + 프로필 이미지 처리
 		if (request.getMainCharId() != null) {
 			Character mainChar = characterRepository.findById(request.getMainCharId())
-				.orElseThrow(() -> new RuntimeException("캐릭터를 찾을 수 없습니다."));
+					.orElseThrow(() -> new RuntimeException("캐릭터를 찾을 수 없습니다."));
 
 			// 일반 정보 null 제외 업데이트 처리
 			if (request.getStatusMessage() != null)
 				mainChar.setStatusMessage(request.getStatusMessage());
 			if (request.getProfileImagePosY() != null)
 				mainChar.setProfileImagePosY(request.getProfileImagePosY());
-			if (request.getFirstSceneContent() != null) 
+			if (request.getFirstSceneContent() != null)
 				mainChar.setFirstSceneContent(request.getFirstSceneContent());
-			if (request.getFirstSceneLocation() != null) 
+			if (request.getFirstSceneLocation() != null)
 				mainChar.setFirstSceneLocation(request.getFirstSceneLocation());
-			if (request.getSpeechExamples() != null) 
+			if (request.getSpeechExamples() != null)
 				mainChar.setSpeechExamples(request.getSpeechExamples());
 
 			MultipartFile profileImage = request.getProfileImageUrl();
@@ -592,8 +576,6 @@ public class NovelServiceImpl implements NovelService {
 
 			baseSystemPrompt = baseSystemPrompt.replace("{{totalSummary}}", initialContext.toString())
 					.replace("{{characterSettings}}", novel.getCharacterSettings())
-					.replace("{{relationLevel}}", mainChar.getRelationshipLevel())
-					.replace("{{affinityScore}}", String.valueOf(mainChar.getAffinity()))
 					.replace("{{userName}}", userChar.getName()).replace("{{mainCharName}}", mainChar.getName());
 
 			StringBuilder instructionBuilder = new StringBuilder();

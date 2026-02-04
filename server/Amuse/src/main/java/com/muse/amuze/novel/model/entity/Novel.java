@@ -84,8 +84,11 @@ public class Novel extends BaseTimeEntity {
     @Column(name = "is_delete")
     private boolean isDelete;
     
-    @Column(name = "is_affinity_mode_enabled")
-    private boolean isAffinityModeEnabled;
+    @Column(name = "is_muse_mode")
+    private boolean isMuseMode;
+
+    @Column(name = "is_adult")
+    private boolean isAdult;
     
     @Column(name = "cover_image_pos_y", nullable = false)
     @Builder.Default
@@ -101,7 +104,8 @@ public class Novel extends BaseTimeEntity {
 	    if (request.getCoverImagePosY() != null) this.coverImagePosY = request.getCoverImagePosY();
 	    if (request.getIsShared() != null) this.isShared = request.getIsShared();
 	    if (request.getIsDelete() != null) this.isDelete = request.getIsDelete();
-	    if (request.getIsAffinityModeEnabled() != null) this.isAffinityModeEnabled = request.getIsAffinityModeEnabled();
+	    if (request.getIsMuseMode() != null) this.isMuseMode = request.getIsMuseMode();
+        if (request.getIsAdult() != null) this.isAdult = request.getIsAdult();
 	    if (request.getIsShared() != null ) {
 	    	if (this.sharedAt == null) {
 	            this.sharedAt = LocalDateTime.now();

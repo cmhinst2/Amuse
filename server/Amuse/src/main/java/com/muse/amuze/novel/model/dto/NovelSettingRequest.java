@@ -18,7 +18,8 @@ public class NovelSettingRequest {
     private List<String> tags;
     private Boolean isShared;
     private Boolean isDelete;
-    private Boolean isAffinityModeEnabled;
+    private Boolean isMuseMode;
+    private Boolean isAdult;
     private Long mainCharId;
     private MultipartFile profileImageUrl;
     private Integer profileImagePosY;

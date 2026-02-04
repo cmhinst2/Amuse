@@ -14,6 +14,7 @@ public class NovelCreateRequest {
     private List<String> tags;
     private String firstScene;
     private String worldSetting;
+    private boolean isAdult;
     
     // 구조화된 캐릭터 리스트 추가
     private List<CharacterRequest> characters;

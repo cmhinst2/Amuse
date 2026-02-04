@@ -133,6 +133,7 @@ export const NovelListComponent = ({ novels, handler }) => {
             )}
 
             <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent p-4 flex flex-col justify-end transform transition-transform duration-300 translate-y-4 group-hover:translate-y-0">
+
               <h1 className="text-xl text-[#F1F5F9] font-bold mb-1 drop-shadow-md">
                 {novel.mainChar.name || "미정 캐릭터"}
               </h1>
@@ -143,9 +144,10 @@ export const NovelListComponent = ({ novels, handler }) => {
             </div>
 
             <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
+
               <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
-                      ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                Muse {novel.affinityModeEnabled ? 'ON' : 'OFF'}
+                      ${novel.museMode ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                Muse {novel.museMode ? 'ON' : 'OFF'}
               </span>
               <span className="flex gap-4 px-2 py-0.5 rounded-md font-bold backdrop-blur-md bg-slate-700/20 text-slate-200">
                 <div className="flex items-center gap-1">
@@ -162,9 +164,15 @@ export const NovelListComponent = ({ novels, handler }) => {
           <div className="mt-4 px-1" >
             <div className="flex flex-col">
               <section onClick={() => navigate(`/studio/write/${novel.id}`)} className="flex items-center justify-between mb-4 cursor-pointer ">
-                <h4 className="text-xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
-                  {novel.title}
-                </h4>
+                <div className="flex gap-2 items-center">
+                  <h4 className="text-xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
+                    {novel.title}
+                  </h4>
+                  {novel.adult &&
+                    <span className="flex items-center justify-center w-5 h-5 rounded bg-red-600 text-white text-[10px] font-black shadow-lg">
+                      19
+                    </span>}
+                </div>
                 <span className={`text-[13px] font-medium px-2 py-0.5 rounded border ${novel.status == 'PROCESS'
                   ? 'text-[#2DD4BF] border-[#2DD4BF]/30 bg-[#10B981]/5'
                   : 'text-[#94A3B8] border-[#334155]'
@@ -263,7 +271,7 @@ export const NovelActionModal = ({ novel, onClose }) => {
             소설 읽기
           </button>
 
-          {novel.affinityModeEnabled &&
+          {novel.museMode &&
             <button
               onClick={() => handleStartChat(novel)}
               className="flex items-center justify-center gap-3 w-full py-4 bg-[#FB7185] hover:bg-[#f43f5e] text-white rounded-xl transition-all font-bold shadow-lg shadow-rose-900/20 group"
@@ -273,7 +281,7 @@ export const NovelActionModal = ({ novel, onClose }) => {
             </button>}
         </div>
 
-        {novel.affinityModeEnabled &&
+        {novel.museMode &&
           <div className="bg-[#0f172a]/50 py-3 text-center">
             <p className="text-[12px] text-[#94A3B8]">{getJosa(novel.mainChar.name, '과', '와')}의 대화에서 몰입을 위해 소설 읽기를 추천드려요💕</p>
           </div>}

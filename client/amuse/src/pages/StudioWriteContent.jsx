@@ -12,38 +12,6 @@ import { useTypingEffect } from "../api/useTypingEffect";
 import { toast } from 'sonner';
 import { useNovel } from "../hooks/useNovel";
 
-// 관계 레벨 설정
-const RELATION_CONFIG = {
-  ACQUAINTANCE: {
-    level: 1,
-    name: "지인",
-    desc: "서로의 존재를 인지하기 시작했습니다.",
-    color: "#94A3B8",
-    threshold: 0,
-  },
-  FRIEND: {
-    level: 2,
-    name: "친구",
-    desc: "함께 있으면 편안한 사이가 되었습니다.",
-    color: "#60A5FA",
-    threshold: 100,
-  },
-  SOME: {
-    level: 3,
-    name: "썸",
-    desc: "공기 중에 묘한 긴장감이 흐르기 시작합니다.",
-    color: "#F472B6",
-    threshold: 200,
-  },
-  LOVER: {
-    level: 4,
-    name: "연인",
-    desc: "이제 서로가 없이는 안 되는 사이입니다.",
-    color: "#FB7185",
-    threshold: 300,
-  },
-};
-
 // 집필화면
 export function StudioWriteContent() {
   const { novelId } = useParams(); // url의 novelId 얻어오기
@@ -98,8 +66,7 @@ export function StudioWriteContent() {
   });
 
   // <메모이제이션>
-  const mainCharacter = useMemo(() => novelData?.characters?.find(c => c.role === 'MAIN') || { name: '캐릭터', affinity: 0 }, [novelData]);
-  const relation = useMemo(() => getRelationLevel(mainCharacter.affinity), [mainCharacter.affinity]);
+  const mainCharacter = useMemo(() => novelData?.characters?.find(c => c.role === 'MAIN'), [novelData]);
 
   // <Mutaion>
   // 새로운 신 생성 요청
@@ -292,7 +259,7 @@ export function StudioWriteContent() {
   const handleRegenerate = (scene) => {
     reGenerateScene({
       novelId: scene.novelId,
-      lastSceneId: scene.sceneId,
+      lastSceneId: scene.sceneId
     });
   }
 
@@ -427,21 +394,6 @@ export function StudioWriteContent() {
             </button>
             <h2 className="font-bold text-lg truncate text-[#F1F5F9]">{novelData?.title} <span className="text-sm font-normal text-slate-400">({mainCharacter.name})</span></h2>
           </div>
-
-          <div className="flex items-center gap-3">
-            <div className="hidden sm:flex flex-col items-end px-3 border-r border-[#334155]">
-              <span className="text-[10px] text-[#94A3B8] uppercase tracking-tighter">Relation</span>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs font-bold" style={{ color: relation.color }}>{relation.level}단계</span>
-                <span className="text-sm font-medium text-[#F1F5F9]">{relation.name}</span>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 bg-[#0f172a]/50 px-3 py-1.5 rounded-full border border-[#334155] shadow-inner">
-              <Heart size={14} className="text-[#FB7185] fill-[#FB7185]" />
-              <span className="text-sm font-bold text-[#FB7185] tabular-nums">{mainCharacter.affinity}</span>
-            </div>
-          </div>
         </header>
 
         <main ref={mainScrollRef} className="flex-1 overflow-y-auto custom-scrollbar">
@@ -515,13 +467,6 @@ export function StudioWriteContent() {
           </div>
         </footer>
       </div>
-
-      <LevelModal
-        isOpen={levelUpData.isOpen}
-        newLevel={levelUpData.newLevel}
-        onClose={() => setLevelUpData({ ...levelUpData, isOpen: false })}
-      />
-
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-[#0f172a]/80 backdrop-blur-sm z-40 md:hidden" onClick={() => setIsMobileMenuOpen(false)} />
       )}
@@ -570,7 +515,7 @@ const SceneArticle = (props) => {
 
       <article className="animate-fadeIn min-h-[24px]">
         {isPendingAI || isRegenerating ? (
-          <div className="flex items-center gap-2 text-[#FB7185] text-sm italic animate-pulse">
+          <div className="flex items-center gap-2 text-[#FB7185] text-sm animate-pulse">
             <Sparkles size={16} />
             {mainCharacter.name}의 대답을 기다리는 중 입니다...
           </div>
@@ -606,7 +551,7 @@ const SceneArticle = (props) => {
                 </button>
               </div>
               :
-              <p className="font-novel text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
+              <p className="text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
                 <FormatContent text={content} />
                 {isTyping && (
                   <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
@@ -699,78 +644,3 @@ const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAu
     )
   }
 }
-
-// 현재 소설 관계 등급 조회 (점수 기반)
-const getRelationLevel = (score) => {
-  return Object.values(RELATION_CONFIG)
-    .sort((a, b) => b.threshold - a.threshold) // 높은 점수부터 비교
-    .find(r => score >= r.threshold) || RELATION_CONFIG.ACQUAINTANCE;
-};
-
-// 관계 등급 레벨 알림 모달
-const LevelModal = ({ isOpen, onClose, newLevel }) => {
-  const current = RELATION_CONFIG[newLevel] || RELATION_CONFIG.ACQUAINTANCE;
-
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-[#0f172a]/80 backdrop-blur-sm"
-          />
-
-          <motion.div
-            initial={{ scale: 0.8, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.8, opacity: 0, y: 20 }}
-            className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-[#1e293b] border p-8 text-center shadow-2xl"
-            style={{ borderColor: `${current.color}44` }} // 등급 색상을 테두리에 반영 (투명도 44 추가)
-          >
-            {/* 상단 빛 효과 - 등급 색상에 따라 변함 */}
-            <div
-              className="absolute -top-24 left-1/2 -translate-x-1/2 w-48 h-48 blur-[60px] opacity-20"
-              style={{ backgroundColor: current.color }}
-            />
-
-            <motion.div
-              initial={{ rotate: -10, scale: 0 }}
-              animate={{ rotate: 0, scale: 1 }}
-              transition={{ delay: 0.2, type: 'spring' }}
-              className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full text-4xl"
-              style={{ backgroundColor: `${current.color}15` }} // 배경에 살짝 색상 가미
-            >
-              {current.level === 4 ? '❤️' : current.level === 3 ? '✨' : '⭐'}
-            </motion.div>
-
-            <h3 className="mb-2 text-[#94A3B8] text-sm tracking-widest uppercase font-medium">
-              Relationship Level Up
-            </h3>
-
-            <h2 className="mb-4 text-3xl font-bold text-[#F1F5F9]">
-              <span style={{ color: current.color }}>{current.name}</span>
-            </h2>
-
-            <p className="mb-8 text-[#94A3B8] leading-relaxed">
-              {current.desc}
-            </p>
-
-            <button
-              onClick={onClose}
-              className="w-full rounded-xl py-4 font-bold text-white transition-all active:scale-95 shadow-lg"
-              style={{
-                backgroundColor: current.color,
-                boxShadow: `0 10px 15px -3px ${current.color}33`
-              }}
-            >
-              관계를 이어가기
-            </button>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
-  );
-};

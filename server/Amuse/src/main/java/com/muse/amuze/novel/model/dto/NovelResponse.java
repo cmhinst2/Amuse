@@ -36,7 +36,8 @@ public class NovelResponse {
 	private LocalDateTime updatedAt; // 마지막 수정일
 	private LocalDateTime shatredAt; // 공개일
 	private boolean isDelete; // 삭제 여부
-	private boolean isAffinityModeEnabled; // 호감도 모드 활성화 여부
+	private boolean isMuseMode; // Muse 모드 활성화 여부
+	private boolean isAdult; // 성인 이용가 여부
 
 	private int authorId; // 작성자 id
 	private String authorName; // 작성자 이름
@@ -58,7 +59,6 @@ public class NovelResponse {
 		private String name; // 캐릭터 이름
 		private CharacterRole role; // USER 또는 MAIN
 		private String gender; // 캐릭터 성별
-		private int affinity; // (소설)현재 호감도
 		private String appearance; // (소설/뮤즈) 외형
 		private String personality; // (소설/뮤즈)성격/특징 (AI 프롬프트용)
 		private String profileImageUrl; // 프로필 이미지
@@ -103,7 +103,8 @@ public class NovelResponse {
 	            .viewCount(stats != null ? stats.getViewCount() : 0L)
 	            .likeCount(stats != null ? stats.getLikeCount() : 0L)
 	            .isDelete(novel.isDelete())
-	            .isAffinityModeEnabled(novel.isAffinityModeEnabled())
+	            .isMuseMode(novel.isMuseMode())
+							.isAdult(novel.isAdult())
 	            .build();
 	}
 	

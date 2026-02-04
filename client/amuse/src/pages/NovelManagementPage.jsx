@@ -37,7 +37,8 @@ export function NovelManagementPage() {
       isShared: novel.shared,
       isDelete: novel.delete,
       authorNote: novel.authorNote,
-      isAffinityModeEnabled: novel.affinityModeEnabled,
+      isMuseMode: novel.museMode,
+      isAdult: novel.adult,
       mainCharId: novel.characters.find((c) => c.role == 'MAIN').id,
       mainCharName: novel.characters.find((c) => c.role == 'MAIN').name,
       profileImageUrl: novel.characters.find((c) => c.role == 'MAIN').profileImageUrl,
@@ -106,7 +107,7 @@ export function NovelManagementPage() {
     });
 
     // 이미 호감도 모드일 때 또는 채팅모드를 활성화로 수정할 때  
-    if (allValues['isAffinityModeEnabled'] === true || formData.get('isAffinityModeEnabled') === 'true') {
+    if (allValues['isMuseMode'] === true || formData.get('isMuseMode') === 'true') {
 
       // formData에 값이 없는데 allValues에는 있는 경우(이전 Muse 모드에서 작성해둔 내용) 보정
       if (!formData.get('firstSceneContent') && allValues['firstSceneContent']?.trim()) {
@@ -271,7 +272,7 @@ export function NovelManagementPage() {
             {activeTab === 'basic' && (
               <div className="space-y-8 animate-in fade-in duration-300">
                 <h2 className="text-2xl font-bold flex items-center gap-2">
-                  <Globe className="text-[#FB7185]" /> 작품 공개 설정
+                  <Globe className="text-[#FB7185]" /> 기본 정보 설정
                 </h2>
 
                 <div className="bg-[#0f172a] p-6 rounded-xl border border-[#334155] flex justify-between items-center">
@@ -284,6 +285,26 @@ export function NovelManagementPage() {
                     control={control}
                     render={({ field: { onChange, value } }) => (
                       <Toggle name="isShared" isEnabled={value} onChange={(key, val) => { onChange(val) }} />
+                    )}
+                  />
+                </div>
+                <div className="bg-[#0f172a] p-6 rounded-xl border border-[#334155] flex justify-between items-center">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-bold text-lg text-[#F1F5F9]">민감한 콘텐츠 설정</h4>
+                      <span className="px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/50 text-red-500 text-[10px] font-bold">19+</span>
+                    </div>
+                    <p className="text-[#94A3B8]">폭력성, 선정성 등 성인 대상의 민감한 내용을 포함하고 있습니까?</p>
+                  </div>
+                  <Controller
+                    name="isAdult"
+                    control={control}
+                    render={({ field: { onChange, value } }) => (
+                      <Toggle
+                        name="isAdult"
+                        isEnabled={value}
+                        onChange={(key, val) => onChange(val)}
+                      />
                     )}
                   />
                 </div>
@@ -369,8 +390,8 @@ export function NovelManagementPage() {
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-[#94A3B8] italic">
-                    * 위 정보는 소설 생성 시 작성된 기본 설정이며, 본 페이지에서는 수정할 수 없습니다.
+                  <p className="flex text-[11px] text-[#94A3B8] italic">
+                    <Info size={12} /> 위 정보는 소설 생성 시 작성된 기본 설정이며, 본 페이지에서는 수정할 수 없습니다.
                   </p>
                 </div>
 
@@ -393,13 +414,11 @@ export function NovelManagementPage() {
                     </div>
                   </div>
 
-                  <p className="text-[11px] text-[#475569] flex items-center gap-1 px-1">
+                  <p className="flex text-[11px] text-[#94A3B8] italic">
                     <Info size={12} /> 세계관 설정은 소설 생성 단계에서 확정되며, 관리 페이지에서는 조회만 가능합니다.
                   </p>
                 </div>
               </div>
-
-
             )}
 
             {activeTab === 'dating' && (
@@ -409,10 +428,10 @@ export function NovelManagementPage() {
                     <MessageCircle className="text-[#FB7185]" /> Muse 모드
                   </h2>
                   <Controller
-                    name="isAffinityModeEnabled"
+                    name="isMuseMode"
                     control={control}
                     render={({ field: { onChange, value } }) => (
-                      <Toggle name="isAffinityModeEnabled" isEnabled={value} onChange={(key, val) => { onChange(val) }} />
+                      <Toggle name="isMuseMode" isEnabled={value} onChange={(key, val) => { onChange(val) }} />
                     )}
                   />
                 </div>
@@ -422,7 +441,7 @@ export function NovelManagementPage() {
                   설정을 상세히 작성할수록 독자들의 경험이 풍부해집니다.
                 </p>
 
-                {allValues.isAffinityModeEnabled && (
+                {allValues.isMuseMode && (
                   <div className="pt-6 space-y-8">
                     <Controller
                       name="profileImagePosY"

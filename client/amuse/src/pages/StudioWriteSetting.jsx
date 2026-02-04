@@ -310,36 +310,6 @@ export default function StudioWriteSetting() {
                       </button>
                     </div>
 
-                    <div className="space-y-4 pt-6 border-t border-[#1e293b]">
-                      <div className="flex items-center justify-between">
-                        <h3 className="text-lg font-bold text-[#F1F5F9]">초기 관계 설정</h3>
-                        <span className="text-xs text-[#94A3B8]">소설 시작 시점의 관계입니다.</span>
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {[
-                          { id: 'ACQUAINTANCE', label: '지인', desc: '예의와 거리감' },
-                          { id: 'FRIEND', label: '친구', desc: '편안함과 장난' },
-                          { id: 'SOME', label: '썸', desc: '설렘과 긴장' },
-                          { id: 'LOVER', label: '연인', desc: '신뢰와 애정' }
-                        ].map((rel) => (
-                          <button
-                            key={rel.id}
-                            onClick={() => setNovelData(prev => ({ ...prev, relationshipLevel: rel.id }))}
-                            className={`flex flex-col items-center justify-center p-4 rounded-2xl border-2 transition-all ${novelData.relationshipLevel === rel.id
-                              ? 'border-[#FB7185] bg-[#FB7185]/10 shadow-[0_0_15px_rgba(251,113,133,0.3)]'
-                              : 'border-[#1e293b] bg-[#1e293b] hover:border-[#334155]'
-                              }`}
-                          >
-                            <span className={`font-bold ${novelData.relationshipLevel === rel.id ? 'text-[#FB7185]' : 'text-[#F1F5F9]'}`}>
-                              {rel.label}
-                            </span>
-                            <span className="text-[10px] text-[#94A3B8] mt-1">{rel.desc}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
                     {/* 세계관 설정 섹션 */}
                     <div className="space-y-4 pt-6 border-t border-[#1e293b]">
                       <h3 className="text-lg font-bold text-[#F1F5F9]">세계관 및 기타 설정</h3>

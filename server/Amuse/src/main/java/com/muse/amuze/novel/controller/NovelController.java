@@ -87,7 +87,6 @@ public class NovelController {
 								.id(c.getId())
 								.name(c.getName())
 								.role(c.getRole())
-								.affinity(c.getAffinity())
 								.personality(c.getPersonality())
 								.appearance(c.getAppearance())
 								.speechExamples(c.getSpeechExamples())
@@ -108,7 +107,8 @@ public class NovelController {
 						.authorName(novel.getAuthor().getNickname())
 						.isShared(novel.isShared())
 						.isDelete(novel.isDelete())
-						.isAffinityModeEnabled(novel.isAffinityModeEnabled())
+						.isMuseMode(novel.isMuseMode())
+						.isAdult(novel.isAdult())
 						.build());
 	}
 	

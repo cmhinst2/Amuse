@@ -176,14 +176,18 @@ export const NovelList = ({ data, isOwner }) => {
               <div className="h-[2px] w-6 bg-[#FB7185] rounded-full mt-1 mb-2" />
             </div>
 
-            <div className="absolute top-3 left-3 right-3 z-30 flex justify-between">
+            <div className="absolute top-3 left-3 right-3 z-30 flex gap-2">
+              {novel.adult && 
+              <span className="flex items-center justify-center w-5 h-5 rounded bg-red-600 text-white text-[10px] font-black shadow-lg">
+                19
+              </span>}
               <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md 
                 ${novel.shared ? 'bg-emerald-500/80 text-white' : 'bg-slate-700/80 text-slate-200'}`}>
                 {novel.shared ? '연재 중' : '비공개'}
               </span>
               <span className={`text-[12px] px-2 py-0.5 rounded-md font-bold backdrop-blur-md
-                ${novel.affinityModeEnabled ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
-                Muse {novel.affinityModeEnabled ? 'ON' : 'OFF'}
+                ${novel.museMode ? 'bg-[#FB7185] text-white' : 'bg-slate-700/80 text-slate-200'}`}>
+                Muse {novel.museMode ? 'ON' : 'OFF'}
               </span>
             </div>
           </div>
