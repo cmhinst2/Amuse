@@ -1,6 +1,10 @@
 package com.muse.amuze.novel.model.entity;
 
 import java.time.LocalDateTime;
+import java.util.Map;
+
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -22,13 +26,15 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "chat_message", indexes = {
-    @Index(name = "idx_chat_message_room_id", columnList = "room_id")
+        @Index(name = "idx_chat_message_room_id", columnList = "room_id")
 })
-@Getter @Setter
-@NoArgsConstructor @AllArgsConstructor
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class ChatMessage extends BaseTimeEntity{
-	@Id
+public class ChatMessage extends BaseTimeEntity {
+    @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -37,7 +43,7 @@ public class ChatMessage extends BaseTimeEntity{
     private ChatRoom chatRoom;
 
     @Column(nullable = false, length = 20)
-    private String senderType; // "USER" 또는 "CHARACTER"
+    private String senderType; // "USER" / "CHARACTER" / "SYSTEM"
 
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
@@ -52,6 +58,10 @@ public class ChatMessage extends BaseTimeEntity{
 
     private LocalDateTime readAt;
 
-    @Column(columnDefinition = "JSONB")
-    private String metadata;
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "metadata", columnDefinition = "jsonb")
+    private Map<String, Object> metadata;
+
+    @Column(name = "sequence_order", nullable = false)
+    private Integer sequenceOrder;
 }

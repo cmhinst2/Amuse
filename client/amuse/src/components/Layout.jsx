@@ -1,6 +1,6 @@
 
 import LoginPage from "../pages/LoginPage";
-import { Routes, Route, Navigate, useParams, useNavigate } from "react-router-dom";
+import { Routes, Route, useParams, useNavigate } from "react-router-dom";
 import KakaoCallback from "./KakaoCallback";
 import Header, { Footer } from "./Form";
 import useAuthStore from "../store/authStore";
@@ -13,13 +13,11 @@ import Notice from "../pages/Notice";
 import Event from "../pages/Event";
 import StudioWriteSetting from "../pages/StudioWriteSetting";
 import { StudioWriteContent } from "../pages/StudioWriteContent";
-import { useQuery } from "@tanstack/react-query";
-import amuseAPI from "../api/amuseAPI";
 import { LoadingScreen } from "./Spinner";
 import { Library } from "../pages/Libaray";
 import { NovelManagementPage } from "../pages/NovelManagementPage";
 import { MuseChat } from "../pages/MuseChat";
-import { MyMuseList } from "../pages/MyMuseList";
+import { MuseList } from "../pages/MuseList";
 import { useEffect } from "react";
 import MuseDescription from "../pages/MuseDescription";
 import MuseRemake from "../pages/MuseRemake";
@@ -51,7 +49,7 @@ export default function Layout() {
                     <Route path="/studio/write" element={<StudioWriteSetting />} />
                     <Route path="/studio/write/:novelId" element={<NovelAuthorGuard><StudioWriteContent /></NovelAuthorGuard>} />
                     <Route path="/studio/setting/:novelId" element={<NovelAuthorGuard><NovelManagementPage /></NovelAuthorGuard>} />
-                    <Route path="/muse" element={<MyMuseList />} />
+                    <Route path="/muse" element={<MuseList />} />
                     <Route path="/muse/description/:characterId" element={<CharacterAuthGuard><MuseDescription /></CharacterAuthGuard>} />
                     <Route path="/muse/:novelId/chat/:roomId" element={<MuseAuthGuard><MuseChat /></MuseAuthGuard>} />
                     <Route path="/muse/:novelId/novel/:roomId" element={<MuseAuthGuard><MuseRemake /></MuseAuthGuard>} />
@@ -133,8 +131,7 @@ const MuseAuthGuard = ({ children }) => {
 
   useEffect(() => {
     if (isNovelLoading || isRoomLoading) return; // 로딩중 제외
-
-    console.log(novel);
+    
     // 소설이나 채팅방이 DB에 없는 경우
     if (isNovelError || isRoomError || !chatRoom || !novel) {
       alert("접근할 수 없는 경로입니다.");

@@ -22,4 +22,5 @@ public class ChatRoomRequest {
 	private Integer scenarioStep;
 	private String firstSceneContent; // 조사 처리된 첫장면
 	private String firstSceneLocation;
+	private String roomMode; // chat_room 유형
 }

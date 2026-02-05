@@ -84,4 +84,7 @@ public class ChatRoom extends BaseTimeEntity{
     
     @Column(name = "user_nickname", length = 10) // 채팅에서 사용할 사용자 닉네임
     private String userNickname;
+
+    @Column(name = "user_note", columnDefinition = "TEXT")
+    private String userNote;
 }

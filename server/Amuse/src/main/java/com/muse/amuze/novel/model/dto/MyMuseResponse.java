@@ -3,6 +3,9 @@ package com.muse.amuze.novel.model.dto;
 import lombok.*;
 import java.time.LocalDateTime;
 
+import com.muse.amuze.novel.model.entity.ChatMessage;
+import com.muse.amuze.novel.model.entity.ChatRoom;
+
 @Getter
 @Setter
 @NoArgsConstructor  // 기본 생성자 (JPA, Jackson용)

@@ -12,12 +12,12 @@ export const FormatContent = ({text}) => {
     if (part.startsWith('"') && part.endsWith('"')) {
       // 대사 부분: 강조색 (로즈색) 적용
       return (
-        <span key={index} className="text-[#FB7185] drop-shadow-[0_0_1px_rgba(251,113,133,0.5)]">
+        <span key={index} className="text-[#FB7185] font-semibold">
           {part}
         </span>
       );
     }
     // 지문/설명 부분: 기본색 유지 (약간 흐리게)
-    return <span key={index} className="text-[#F1F5F9]/70">{part}</span>;
+    return <span key={index} className="text-[#F1F5F9]">{part}</span>;
   });
 };

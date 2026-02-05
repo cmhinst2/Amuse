@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.muse.amuze.novel.model.dto.ChatMessageResponse;
 import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
 import com.muse.amuze.novel.model.dto.NovelResponse;
@@ -18,6 +19,8 @@ import com.muse.amuze.novel.model.service.MuseService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @RequestMapping("/api/muse")
@@ -34,7 +37,7 @@ public class MuseController {
 	 * @param userId
 	 * @return
 	 */
-	@GetMapping("chat/{userId:[0-9]+}")
+	@GetMapping("list/{userId:[0-9]+}")
 	public ResponseEntity<List<MyMuseResponse>> getMyMuseList(@PathVariable("userId") int userId) {
 		List<MyMuseResponse> myMuses = museService.getMyMuseList(userId);
 		return ResponseEntity.ok(myMuses);
@@ -65,7 +68,7 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/** 뮤즈 채팅방 생성
+	/** 뮤즈 채팅/리메이크 방 생성
 	 * @param request
 	 * @return
 	 */
@@ -76,13 +79,23 @@ public class MuseController {
 	}
 
 	/** 캐릭터 정보 조회
-	 * @param request
-	 * @return
+	 *
 	 */
 	@GetMapping("{characterId}")
 	public ResponseEntity<NovelResponse> checkValidCharacter(@PathVariable("characterId") Long characterId) {
 		NovelResponse response = museService.checkValidCharacter(characterId);
 		return ResponseEntity.ok(response);
 	}
+
+	/** chatRoom의 메시지 내역 조회
+	 *
+	 */
+	@GetMapping("{roomId}/messages")
+	public ResponseEntity<ChatMessageResponse> getChatMessages(@PathVariable("roomId") Long roomId) {
+		ChatMessageResponse response = museService.getChatMessages(roomId);
+		return ResponseEntity.ok(response);
+	}
+	
+
 
 }

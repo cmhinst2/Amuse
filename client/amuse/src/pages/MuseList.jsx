@@ -7,14 +7,14 @@ import useAuthStore from "../store/authStore";
 import { LoadingScreen } from "../components/Spinner";
 import { formatChatMessageDate, getServerBaseUrl } from "../api/util";
 
-export function MyMuseList() {
+export function MuseList() {
   const navigate = useNavigate();
   const { id, nickname } = useAuthStore((state) => state.userInfo);
 
   // <Data Fetch>
   const { data: myMuses = [], isLoading, status, fetchStatus } = useQuery({
     queryKey: ['muse', 'chatRoom', 'list', id],
-    queryFn: () => amuseAPI.get(`/api/muse/chat/${id}`).then(res => res.data),
+    queryFn: () => amuseAPI.get(`/api/muse/list/${id}`).then(res => res.data),
     enabled: !!id,
     staleTime: 1000 * 60 * 5,
   });
@@ -46,23 +46,25 @@ export function MyMuseList() {
               {myMuses.map((muse, idx) => (
                 <div
                   key={`${muse.roomId}_${idx}`}
-                  onClick={() => navigate(`/muse/${muse.novelId}/chat/${muse.roomId}`)}
+                  onClick={() => {
+                    muse.roomMode === 'AFFINITY' ? navigate(`/muse/${muse.novelId}/chat/${muse.roomId}`) : navigate(`/muse/${muse.novelId}/novel/${muse.roomId}`)
+                  }}
                   className="group bg-[#1e293b]/50 hover:bg-[#1e293b] border border-[#334155] hover:border-[#FB7185]/50 rounded-2xl p-5 transition-all cursor-pointer flex items-center gap-6 shadow-lg hover:shadow-[0_0_20px_rgba(251,113,133,0.1)]"
                 >
                   <div className="shrink-0">
                     <div className="w-20 h-20 rounded-2xl overflow-hidden border-2 border-[#334155] group-hover:border-[#FB7185] transition-colors">
-                      
-                      {muse.roomMode === 'AFFINITY'? 
-                      <img src={getServerBaseUrl(muse.profileImageUrl)}
-                        alt={muse.name}
-                        style={{ objectPosition: `center ${muse.profileImagePosY}%` }}
-                        className="w-full h-full object-cover" /> :
+
+                      {muse.roomMode === 'AFFINITY' ?
+                        <img src={getServerBaseUrl(muse.profileImageUrl)}
+                          alt={muse.name}
+                          style={{ objectPosition: `center ${muse.profileImagePosY}%` }}
+                          className="w-full h-full object-cover" /> :
                         <img src={getServerBaseUrl(muse.coverImageUrl)}
-                        alt={muse.name}
-                        style={{ objectPosition: `center ${muse.coverImagePosY}%` }}
-                        className="w-full h-full object-cover" />
+                          alt={muse.name}
+                          style={{ objectPosition: `center ${muse.coverImagePosY}%` }}
+                          className="w-full h-full object-cover" />
                       }
-                      
+
                     </div>
                   </div>
 

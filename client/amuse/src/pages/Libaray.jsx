@@ -134,10 +134,10 @@ export const NovelListComponent = ({ novels, handler }) => {
 
             <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-[#0f172a] via-[#0f172a]/80 to-transparent p-4 flex flex-col justify-end transform transition-transform duration-300 translate-y-4 group-hover:translate-y-0">
 
-              <h1 className="text-xl text-[#F1F5F9] font-bold mb-1 drop-shadow-md">
-                {novel.mainChar.name || "미정 캐릭터"}
+              <h1 className="text-2xl text-[#F1F5F9] font-bold mb-1 drop-shadow-md">
+                {novel.mainChar.name || "-"}
               </h1>
-              <p className="text-[#F1F5F9] text-[13px] leading-snug line-clamp-3 mb-1 font-medium opacity-100 transition-opacity duration-300">
+              <p className="text-[#F1F5F9] text-ms leading-snug line-clamp-3 mb-1 font-medium opacity-100 transition-opacity duration-300">
                 {novel.description || "Amuse의 신작 소설을 즐기세요."}
               </p>
               <div className="h-[2px] w-6 bg-[#FB7185] rounded-full mt-3 mb-4 shadow-[0_0_8px_#FB7185]" />
@@ -165,7 +165,7 @@ export const NovelListComponent = ({ novels, handler }) => {
             <div className="flex flex-col">
               <section onClick={() => navigate(`/studio/write/${novel.id}`)} className="flex items-center justify-between mb-4 cursor-pointer ">
                 <div className="flex gap-2 items-center">
-                  <h4 className="text-xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
+                  <h4 className="text-2xl font-bold text-[#F1F5F9] group-hover:text-[#FB7185] transition-colors line-clamp-1">
                     {novel.title}
                   </h4>
                   {novel.adult &&

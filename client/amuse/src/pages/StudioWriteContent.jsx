@@ -114,26 +114,6 @@ export function StudioWriteContent() {
         return [...filteredOld, newScene];
       });
 
-      // 최신 호감도로 교체
-      queryClient.setQueryData(['novel', novelId], (oldNovel) => {
-        if (!oldNovel) return oldNovel;
-        return {
-          ...oldNovel,
-          characters: oldNovel.characters.map(char =>
-            char.role === 'MAIN'
-              ? { ...char, affinity: newScene.affinity }
-              : char
-          )
-        };
-      });
-
-      // levelUp이 true일때 레벨업 모달호출
-      if (newScene.levelUp) {
-        document.body.classList.add('flash-effect');
-        setTimeout(() => document.body.classList.remove('flash-effect'), 500);
-        setLevelUpData({ isOpen: true, newLevel: newScene.relationshipLevel });
-      }
-
       // 입력창 초기화
       setUserInput('');
       setIsAutoMode(false);
@@ -186,13 +166,6 @@ export function StudioWriteContent() {
           )
         };
       });
-
-      // 레벨업 시 모달세팅
-      if (updatedScene.levelUp) {
-        document.body.classList.add('flash-effect');
-        setTimeout(() => document.body.classList.remove('flash-effect'), 500);
-        setLevelUpData({ isOpen: true, newLevel: updatedScene.relationshipLevel });
-      }
 
       toast.success("서사가 다시 쓰여졌습니다.");
     },
@@ -475,7 +448,7 @@ export function StudioWriteContent() {
 }
 
 // 장면 렌더링 컴포넌트
-const SceneArticle = (props) => {
+export const SceneArticle = (props) => {
   const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode,
     editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending } = props;
   const isNewLastScene = checkLastScene && checkNewScene;
@@ -567,7 +540,7 @@ const SceneArticle = (props) => {
 };
 
 // 조건부 툴바 컴포넌트
-const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, textareaRef, setUserInput, isRegenPending }) => {
+export const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setIsAutoMode, textareaRef, setUserInput, isRegenPending }) => {
   const isPending = isNewScenePending || isEditPending || isRegenPending;
 
   if (!isPending)
@@ -597,7 +570,7 @@ const EditorToolbar = memo(({ isNewScenePending, isEditPending, isAutoMode, setI
 });
 
 // 조건부 작성창 컴포넌트
-const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isNewScenePending, isEditPending, isRegenPending, onSend }) => {
+export const EditorInput = ({ mainCharacter, textareaRef, userInput, setUserInput, isAutoMode, isNewScenePending, isEditPending, isRegenPending, onSend }) => {
   const isPending = isNewScenePending || isEditPending || isRegenPending;
 
   if (isPending) {

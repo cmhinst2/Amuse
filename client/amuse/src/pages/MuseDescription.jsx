@@ -19,6 +19,7 @@ const MuseDescription = () => {
   const [activeSlide, setActiveSlide] = useState(0);
   const { id, nickname } = useAuthStore(state => state.userInfo);
   const [isNicknameOpen, setIsNicknameOpen] = useState(false);
+  const [selectedMode, setSelectedMode] = useState(null); // 'AFFINITY' 또는 'REMAKE'
 
   // data fetch
   const { data, isLoading } = useCharacter(characterId, {
@@ -37,7 +38,7 @@ const MuseDescription = () => {
   // mutate
   // Muse 채팅방 생성
   const { mutate: createChatRoom } = useMutation({
-    mutationFn: (nickname) => {
+    mutationFn: ({ nickname, mode }) => {
       const processedContent = replaceNicknameWithJosa(
         novel.mainChar.firstSceneContent,
         nickname
@@ -50,14 +51,19 @@ const MuseDescription = () => {
         scenarioId: 1,
         scenarioStep: 0,
         firstSceneLocation: novel.mainChar.firstSceneLocation,
-        firstSceneContent: processedContent
+        firstSceneContent: processedContent,
+        roomMode: mode
       });
     },
     onSuccess: (newRoom) => {
-      const { roomId, novelId, userId } = newRoom.data;
+      const { roomId, novelId, userId, roomMode } = newRoom.data;
       queryClient.setQueryData(['muse', 'chatRoom', 'detail', String(roomId)], newRoom.data);
       queryClient.invalidateQueries({ queryKey: ['muse', 'chatRoom', 'list', userId] }); // 뮤즈리스트 캐시 무효화
-      navigate(`/muse/${novelId}/chat/${roomId}`);
+      if(roomMode === 'REMAKE') {
+        navigate(`/muse/${novelId}/novel/${roomId}`);
+      } else {
+        navigate(`/muse/${novelId}/chat/${roomId}`);
+      }
     },
     onError: (error) => {
       console.error("실제 발생한 에러:", error);
@@ -70,15 +76,21 @@ const MuseDescription = () => {
     }
   });
 
+  
+  // handler
   // 채팅 방 생성 및 이동
   const handleCreateChatRoom = (nickname) => {
-    createChatRoom(nickname);
+    if (selectedMode) {
+      createChatRoom({ nickname, mode: selectedMode });
+    }
+    setIsNicknameOpen(false);
   }
 
-  // 리메이크 설명 화면으로 이동
-  const handleRemakeNovel = () => {
-    navigate(`/muse/${novel.id}/novel/${roomId}`);
-  }
+  // 닉네임 입력 모달 핸들러
+  const handleOpenNicknameModal = (mode) => {
+    setSelectedMode(mode);
+    setIsNicknameOpen(true);
+  };
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
@@ -146,10 +158,10 @@ const MuseDescription = () => {
               </div>
 
               <div className="flex gap-5 pt-4">
-                <button onClick={() => setIsNicknameOpen(true)} className="flex-1 max-w-[200px] h-16 bg-[#fb7185] hover:bg-[#f43f5e] text-white rounded-2xl font-black text-lg shadow-2xl shadow-rose-500/30 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                <button onClick={() => handleOpenNicknameModal('AFFINITY')} className="flex-1 max-w-[200px] h-16 bg-[#fb7185] hover:bg-[#f43f5e] text-white rounded-2xl font-black text-lg shadow-2xl shadow-rose-500/30 transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
                   <MessageCircle fill="currentColor" size={20} /> 채팅하기
                 </button>
-                <button onClick={() => handleRemakeNovel()} className="flex-1 max-w-[200px] h-16 bg-[#1e293b] hover:bg-[#334155] text-[#F1F5F9] rounded-2xl font-black text-lg border border-[#334155] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
+                <button onClick={() => handleOpenNicknameModal('REMAKE')} className="flex-1 max-w-[200px] h-16 bg-[#4f46e5] hover:bg-[#3730a3] text-[#F1F5F9] rounded-2xl font-black text-lg border border-[#334155] transition-all transform hover:-translate-y-1 flex items-center justify-center gap-2">
                   <BookOpen size={20} /> 리메이크 시작
                 </button>
               </div>
@@ -241,7 +253,6 @@ const MuseDescription = () => {
         onClose={() => setIsNicknameOpen(false)}
         onConfirm={(nickname) => {
           handleCreateChatRoom(nickname);
-          setIsNicknameOpen(false);
         }}
       />
     </div>

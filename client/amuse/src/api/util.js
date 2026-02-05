@@ -76,8 +76,6 @@ export const replaceNicknameWithJosa = (template, nickname) => {
   })
 };
 
-
-
 // 서버 이미지 경로 연결 반환 함수
 export const getServerBaseUrl = (path) => {
   return `http://localhost${path}`;
