@@ -291,4 +291,13 @@ public class MuseServiceImpl implements MuseService {
 				.build();
 
 	}
+
+	@Transactional
+	@Override
+	public String updateUserNote(Long roomId, String userNote) {
+		ChatRoom chatRoom = chatRoomRepository.findById(roomId)
+				.orElseThrow(() -> new EntityNotFoundException("채팅방 없음"));
+		chatRoom.setUserNote(userNote);
+		return userNote;
+	}
 }

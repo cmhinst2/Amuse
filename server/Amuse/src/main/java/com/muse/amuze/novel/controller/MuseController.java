@@ -4,23 +4,26 @@ import java.util.List;
 
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.muse.amuze.novel.model.dto.ChatMessageRequest;
 import com.muse.amuze.novel.model.dto.ChatMessageResponse;
 import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
 import com.muse.amuze.novel.model.dto.NovelResponse;
+import com.muse.amuze.novel.model.dto.UserNoteRequest;
 import com.muse.amuze.novel.model.service.MuseService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.RequestParam;
-
+import org.springframework.web.bind.annotation.RequestMethod;
 
 @RestController
 @RequestMapping("/api/muse")
@@ -43,7 +46,8 @@ public class MuseController {
 		return ResponseEntity.ok(myMuses);
 	}
 
-	/** 사용자와 캐릭터의 기존 채팅방 여부 조회
+	/**
+	 * 사용자와 캐릭터의 기존 채팅방 여부 조회
 	 * 
 	 * @param novelId
 	 * @param userId
@@ -55,8 +59,9 @@ public class MuseController {
 		MyMuseResponse response = museService.checkChatRoomByUserId(novelId, userId);
 		return ResponseEntity.ok(response);
 	}
-	
-	/** roomId 여부 확인
+
+	/**
+	 * roomId 여부 확인
 	 * 
 	 * @param novelId
 	 * @param userId
@@ -68,7 +73,9 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/** 뮤즈 채팅/리메이크 방 생성
+	/**
+	 * 뮤즈 채팅/리메이크 방 생성
+	 * 
 	 * @param request
 	 * @return
 	 */
@@ -78,7 +85,8 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/** 캐릭터 정보 조회
+	/**
+	 * 캐릭터 정보 조회
 	 *
 	 */
 	@GetMapping("{characterId}")
@@ -87,7 +95,8 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/** chatRoom의 메시지 내역 조회
+	/**
+	 * chatRoom의 메시지 내역 조회
 	 *
 	 */
 	@GetMapping("{roomId}/messages")
@@ -95,7 +104,22 @@ public class MuseController {
 		ChatMessageResponse response = museService.getChatMessages(roomId);
 		return ResponseEntity.ok(response);
 	}
+
+	/**
+	 * 유저노트 수정
+	 *
+	 */
+	@PatchMapping("editUserNote")
+	public ResponseEntity<String> updateUserNote(@RequestBody UserNoteRequest request) {
+		String updatedNote = museService.updateUserNote(request.roomId(), request.note());
+		return ResponseEntity.ok(updatedNote);
+	}
+
+
+	@PostMapping("create/message")
+	public ResponseEntity<?> createRemakeChatMessage(@RequestBody ChatMessageRequest request) {
+
+		return null;
+	}
 	
-
-
 }

@@ -27,7 +27,6 @@ export function StudioWriteContent() {
   const [userInput, setUserInput] = useState(''); // 사용자 입력 상태값
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 모바일에서 Sidebar 토글용
   const [isAutoMode, setIsAutoMode] = useState(false); // 자동 전개 모드 상태
-  const [levelUpData, setLevelUpData] = useState({ isOpen: false, newLevel: '' }); // 레벨업모달 상태값
   const [newlyCreatedSceneId, setNewlyCreatedSceneId] = useState(null); // 새로 생성된 장면 ID 상태값
   const [isEditMode, setIsEditMode] = useState(false); // 편집 상태
   const [editInput, setEditInput] = useState(''); // 편집 입력 상태

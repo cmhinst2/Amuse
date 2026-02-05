@@ -21,4 +21,6 @@ public interface MuseService {
 
   ChatMessageResponse getChatMessages(Long roomId);
 
+  String updateUserNote(Long roomId, String userNote);
+
 }
