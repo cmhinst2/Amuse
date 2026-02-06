@@ -11,14 +11,14 @@ import org.springframework.data.repository.query.Param;
 
 import com.muse.amuze.novel.model.entity.StoryScene;
 
-public interface StorySceneRepository extends JpaRepository<StoryScene, Long>{
+public interface StorySceneRepository extends JpaRepository<StoryScene, Long> {
 
 	Optional<StoryScene> findFirstByNovelIdOrderBySequenceOrderDesc(Long novelId);
-	
+
 	List<StoryScene> findByNovelIdOrderBySequenceOrderDesc(Long novelId, PageRequest of);
-	
+
 	StoryScene findTopByNovelIdOrderByIdDesc(Long novelId);
-	
+
 	List<StoryScene> findByNovelIdOrderByIdAsc(Long novelId);
 
 	@Query("SELECT s.keyEvent FROM StoryScene s WHERE s.novel.id = :novelId ORDER BY s.id ASC")
@@ -26,15 +26,11 @@ public interface StorySceneRepository extends JpaRepository<StoryScene, Long>{
 
 	@Modifying(clearAutomatically = true) // 수정쿼리로 인식(행의 갯수 반환) - 쿼리 실행 후 수정전 값 비우기
 	@Query("UPDATE StoryScene s SET s.aiOutput = :content WHERE s.novel.id = :novelId AND s.id = :lastSceneId")
-	int updateContentByNovelIdAndSceneId(@Param("novelId") Long novelId, 
-									    @Param("lastSceneId") Long lastSceneId, 
-									    @Param("content") String content);
+	int updateContentByNovelIdAndSceneId(@Param("novelId") Long novelId,
+			@Param("lastSceneId") Long lastSceneId,
+			@Param("content") String content);
 
 	Optional<StoryScene> findByNovelIdAndId(Long novelId, Long lastSceneId);
-
-	
-
-
 
 
 }

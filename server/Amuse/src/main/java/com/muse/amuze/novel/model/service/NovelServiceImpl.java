@@ -216,10 +216,9 @@ public class NovelServiceImpl implements NovelService {
 				// AI 응답 파싱
 				JsonNode rootNode = objectMapper.readTree(jsonResponse);
 				String aiOutput = rootNode.path("ai_output").asText("");
-				String reason = rootNode.path("reason").asText("");
 				String keyEvent = rootNode.path("key_event").asText("");
 
-				if (aiOutput.isBlank() || reason.isBlank() || keyEvent.isBlank()) {
+				if (aiOutput.isBlank() || keyEvent.isBlank()) {
 					throw new RuntimeException("AI 응답 필수 필드 누락");
 				}
 
@@ -258,7 +257,7 @@ public class NovelServiceImpl implements NovelService {
 				}
 
 				// 응답 DTO 반환
-				return StorySceneResponse.of(newScene, reason, mainChar);
+				return StorySceneResponse.of(newScene, mainChar);
 
 			} catch (Exception e) {
 				attempt++;
@@ -313,13 +312,11 @@ public class NovelServiceImpl implements NovelService {
 		// AI에게 다시 요청하여 내용 갱신
 		String jsonResponse = getAiResponse(messages);
 
-		log.debug("AI 재생성 응답: {}", jsonResponse);
+		log.debug("소설 AI 재생성 응답: {}", jsonResponse);
 
 		// AI 응답 파싱
 		JsonNode rootNode = objectMapper.readTree(jsonResponse);
 		String aiOutput = rootNode.get("ai_output").asText();
-		int affinityDelta = rootNode.get("affinity_delta").asInt();
-		String reason = rootNode.get("reason").asText();
 		String keyEvent = rootNode.get("key_event").asText();
 
 		scene.setAiOutput(aiOutput);
@@ -328,7 +325,7 @@ public class NovelServiceImpl implements NovelService {
 		scene.setRegenerated(true); // 재생성 체크
 		scene.setEdited(true); // 재생성한 내용은 수정 불가
 
-		return StorySceneResponse.of(scene, reason, mainChar);
+		return StorySceneResponse.of(scene, mainChar);
 	}
 
 	/**
@@ -439,7 +436,7 @@ public class NovelServiceImpl implements NovelService {
 		Character mainChar = characterRepository.findByNovelIdAndRole(novelRequest.getNovelId(), CharacterRole.MAIN);
 
 		// -> 두번의 AI 호출됨 (비용 고려해볼것)
-		return StorySceneResponse.of(scene, "직접 수정됨", mainChar);
+		return StorySceneResponse.of(scene, mainChar);
 	}
 
 	/**
@@ -564,7 +561,7 @@ public class NovelServiceImpl implements NovelService {
 					StandardCharsets.UTF_8);
 
 			StringBuilder initialContext = new StringBuilder();
-			;
+			
 			if (novel.getTotalSummary() != null && !novel.getTotalSummary().isBlank()) {
 				initialContext.append(novel.getTotalSummary());
 			} else {
@@ -576,7 +573,9 @@ public class NovelServiceImpl implements NovelService {
 
 			baseSystemPrompt = baseSystemPrompt.replace("{{totalSummary}}", initialContext.toString())
 					.replace("{{characterSettings}}", novel.getCharacterSettings())
-					.replace("{{userName}}", userChar.getName()).replace("{{mainCharName}}", mainChar.getName());
+					.replace("{{userName}}", userChar.getName())
+					.replace("{{mainCharName}}", mainChar.getName())
+					.replace("{{worldSetting}", novel.getWorldSetting());
 
 			StringBuilder instructionBuilder = new StringBuilder();
 			String userText = (userInput != null) ? userInput.trim() : "";
@@ -604,7 +603,7 @@ public class NovelServiceImpl implements NovelService {
 
 			instructionBuilder.append("\n\n[!!! CRITICAL OUTPUT RULE !!!]\n")
 					.append("- 반드시 'ai_output' 필드에 800자 내외의 풍부한 소설 본문을 작성하십시오.\n")
-					.append("- 'ai_output', 'affinity_delta', 'reason', 'key_event' 네 가지 필드는 단 하나라도 누락되어서는 안 됩니다.\n")
+					.append("- 'ai_output', 'key_event' 두 가지 필드는 단 하나라도 누락되어서는 안 됩니다.\n")
 					.append("- 본문(ai_output)이 없는 응답은 실패한 응답으로 간주합니다.");
 
 			// 시스템 메시지 세팅
@@ -621,8 +620,6 @@ public class NovelServiceImpl implements NovelService {
 				// 이전 DB 본문을 가짜 JSON으로 감싸서 전달: 이전의 대답 형식(JSON)을 기억, 형식 유지 용도
 				Map<String, Object> assistantData = new HashMap<>();
 				assistantData.put("ai_output", scene.getAiOutput());
-				assistantData.put("affinity_delta", 0);
-				assistantData.put("reason", "이전 대화 맥락");
 				assistantData.put("key_event", scene.getKeyEvent() != null ? scene.getKeyEvent() : "사건 요약");
 
 				String assistantJson = objectMapper.writeValueAsString(assistantData);
@@ -644,7 +641,7 @@ public class NovelServiceImpl implements NovelService {
 	}
 
 	// User의 메시지 전달 및 AI 답변 반환받기
-	private String getAiResponse(List<Message> messages) {
+	public String getAiResponse(List<Message> messages) {
 		OpenAiChatOptions options = OpenAiChatOptions.builder().temperature(0.8).build();
 
 		Prompt prompt = new Prompt(messages, options);
@@ -657,7 +654,7 @@ public class NovelServiceImpl implements NovelService {
 	}
 
 	// json 포맷 제거하여 파싱
-	private String extractJson(String text) {
+	public String extractJson(String text) {
 		if (text == null)
 			return "{}";
 

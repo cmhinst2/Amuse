@@ -18,7 +18,6 @@ import lombok.Setter;
 public class StorySceneResponse {
     private String content;        // AI가 생성한 소설 지문 및 대사 (ai_output)
     private String userInput;	   // 사용자가 보낸 메세지(user_input)
-    private String reason;         // 호감도 변동 이유 (AI가 설명한 심리학적 근거)
     private Long novelId;          // 소설 ID
     private Long sceneId;          // 방금 생성된 장면의 DB ID
     private int sequenceOrder; 	   // 장면의 시퀀스 번호
@@ -32,12 +31,11 @@ public class StorySceneResponse {
      * @param character
      * @return
      */
-    public static StorySceneResponse of(StoryScene scene, String reason, Character character) {
+    public static StorySceneResponse of(StoryScene scene, Character character) {
         return StorySceneResponse.builder()
         		.novelId(scene.getNovel().getId())
                 .content(scene.getAiOutput())
                 .userInput(scene.getUserInput())
-                .reason(reason)
                 .sceneId(scene.getId())
                 .sequenceOrder(scene.getSequenceOrder())
                 .isEdited(scene.isEdited())

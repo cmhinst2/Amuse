@@ -2,6 +2,7 @@ package com.muse.amuze.novel.model.service;
 
 import java.util.List;
 
+import com.muse.amuze.novel.model.dto.ChatMessageRequest;
 import com.muse.amuze.novel.model.dto.ChatMessageResponse;
 import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
@@ -23,4 +24,7 @@ public interface MuseService {
 
   String updateUserNote(Long roomId, String userNote);
 
+	ChatMessageResponse generateNextRemakeMessage(ChatMessageRequest request);
+
+	ChatMessageResponse generateNextChatMessage(ChatMessageRequest request);
 }

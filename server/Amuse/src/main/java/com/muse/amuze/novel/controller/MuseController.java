@@ -17,13 +17,13 @@ import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
 import com.muse.amuze.novel.model.dto.NovelResponse;
 import com.muse.amuze.novel.model.dto.UserNoteRequest;
+import com.muse.amuze.novel.model.entity.Novel;
+import com.muse.amuze.novel.model.entity.StoryScene;
 import com.muse.amuze.novel.model.service.MuseService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestMethod;
 
 @RestController
 @RequestMapping("/api/muse")
@@ -105,9 +105,7 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/**
-	 * 유저노트 수정
-	 *
+	/** 유저노트 수정 요청
 	 */
 	@PatchMapping("editUserNote")
 	public ResponseEntity<String> updateUserNote(@RequestBody UserNoteRequest request) {
@@ -115,11 +113,23 @@ public class MuseController {
 		return ResponseEntity.ok(updatedNote);
 	}
 
-
+	/** REMAKE or CHAT 메시지 생성
+	 * 
+	 */
 	@PostMapping("create/message")
-	public ResponseEntity<?> createRemakeChatMessage(@RequestBody ChatMessageRequest request) {
-
-		return null;
+	public ResponseEntity<ChatMessageResponse> generateNextMessage(@RequestBody ChatMessageRequest request) {
+		log.debug("request :: {}", request);
+		ChatMessageResponse response = null;
+		if(request.getRoomMode().equals("REMAKE")) {
+			response = museService.generateNextRemakeMessage(request);
+		} else {
+			response = museService.generateNextChatMessage(request);
+		}
+		return ResponseEntity.ok(response);
 	}
-	
+
+
+
+
+
 }

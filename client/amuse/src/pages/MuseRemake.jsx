@@ -218,8 +218,9 @@ const MuseRemake = () => {
     console.log(roomInfo)
     generateScene({
       roomId: roomInfo.roomId,
-      mode: isAutoMode ? 'AUTO' : 'USER',
-      content: trimmedInput,
+      roomMode: 'REMAKE',
+      autoMode: isAutoMode ? 'AUTO' : 'USER',
+      userInput: trimmedInput,
       lastSceneId: messageList[messageList.length - 1]?.id, // 마지막 챗 ID (서사 연속성 유지)
     });
     setUserInput(""); // 입력창 초기화

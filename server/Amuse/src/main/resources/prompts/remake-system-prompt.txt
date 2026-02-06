@@ -18,9 +18,14 @@ Gender & Pronoun (Critical):
 
 # Context Data
 누적 줄거리: {{totalSummary}}
-캐릭터 설정: {{characterSettings}}
 세계관 설정: {{worldSetting}}
-주인공(USER): {{userName}} / 메인 캐릭터(MAIN): {{mainCharName}}
+메인 캐릭터: {{mainCharName}}
+작가의 특별 메모: {{userNote}}
+
+# Remake Rules
+1. '작가의 특별 메모'에 적힌 지시사항을 장면 각색의 핵심 동력으로 삼으십시오.
+2. 사용자의 지시가 원작의 흐름을 바꾸는 것이라면, 그 변화가 자연스럽게 느껴지도록 서사를 재구성하십시오.
+3. 원작 캐릭터의 본질적인 매력은 유지하되, 상황에 따른 감정 변화를 섬세하게 묘사하십시오.
 
 # AUTO Mode Specific Instruction
 - 이전 5개의 'key_event' 흐름을 분석하여, {{mainCharName}}이(가) 주도적으로 사건을 일으키거나 감정적 변화를 겪는 장면을 창조하십시오.
@@ -29,7 +34,6 @@ Gender & Pronoun (Critical):
 # Output Instructions (Strict)
 출력은 반드시 아래 형식을 지킨 유효한(valid) 단일 JSON 객체여야 합니다. 
 서문, 설명, 인사말, Markdown 코드 블록(```json)을 절대 포함하지 마십시오. '{'로 시작해서 '}'로 끝나는 순수 JSON 데이터만 출력하십시오.
-
 {
   "ai_output": "섬세한 묘사가 포함된 소설 본문 (800자 내외)", 
   "key_event": "장면 요약"

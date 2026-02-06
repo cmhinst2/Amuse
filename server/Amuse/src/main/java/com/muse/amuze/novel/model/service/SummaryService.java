@@ -5,5 +5,7 @@ import java.io.IOException;
 public interface SummaryService {
 
 	void summarizeInterval(Long id) throws IOException;
+
+  void remakeSummarizeInterval(Long id) throws IOException;
 	
 }
