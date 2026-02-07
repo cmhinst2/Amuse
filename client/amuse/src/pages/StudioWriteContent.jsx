@@ -6,7 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Sidebar } from "../components/Form";
 import { Check, Heart, Loader2, Menu, PenLine, RotateCcw, Sparkles, SquarePen, Type, X } from "lucide-react";
 import { LoadingScreen } from "../components/Spinner";
-import { FormatContent } from "../components/Common";
+import { FormatContent, QuoteContent } from "../components/Common";
 import { getJosa, handleAddParentheses } from "../api/util";
 import { useTypingEffect } from "../api/useTypingEffect";
 import { toast } from 'sonner';
@@ -153,17 +153,6 @@ export function StudioWriteContent() {
     onSuccess: (updatedScene) => {
       queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
         return old?.map(s => s.sceneId === updatedScene.sceneId ? updatedScene : s);
-      });
-
-      // 호감도 세팅
-      queryClient.setQueryData(['novel', novelId], (oldNovel) => {
-        if (!oldNovel) return oldNovel;
-        return {
-          ...oldNovel,
-          characters: oldNovel.characters.map(char =>
-            char.role === 'MAIN' ? { ...char, affinity: updatedScene.affinity } : char
-          )
-        };
       });
 
       toast.success("서사가 다시 쓰여졌습니다.");
@@ -448,7 +437,6 @@ export function StudioWriteContent() {
 
 // 장면 렌더링 컴포넌트
 export const SceneArticle = (props) => {
-  console.log("장면 렌더링 : ", props)
   const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode,
     editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending } = props;
   const isNewLastScene = checkLastScene && checkNewScene;
@@ -524,12 +512,12 @@ export const SceneArticle = (props) => {
                 </button>
               </div>
               :
-              <p className="text-base leading-[1.8] text-[#F1F5F9]/80 whitespace-pre-wrap tracking-wide">
-                <FormatContent text={content} />
+              <>
+                <QuoteContent content={content} />
                 {isTyping && (
                   <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
                 )}
-              </p>
+              </>
             }
           </>
         )}

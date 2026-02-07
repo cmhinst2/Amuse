@@ -53,7 +53,7 @@ public class SummaryServiceImpl implements SummaryService {
   @Value("classpath:prompts/summary-system-prompt.txt")
   private Resource summaryPromptResource;
 
-  /**
+  /** NOVEL
    * 전체 내용 줄거리 요약
    * 누적 totalSummar + 최근 5개 keyEvents 기반으로 요약
    */
@@ -100,7 +100,7 @@ public class SummaryServiceImpl implements SummaryService {
     log.info("=== 줄거리 업데이트 완료 (Novel ID: {}) ===", novelId);
   }
 
-  /**
+  /** REMAKE
    * 전체 내용 줄거리 요약
    * 누적 lastSummary + 최근 5개 keyEvents 기반으로 요약
    * chat_message 테이블의 metadata 필드에 저장된 keyEvent들을 기반으로 함
@@ -115,6 +115,8 @@ public class SummaryServiceImpl implements SummaryService {
     // 해당 채팅방의 최신 메시지 5개 조회
     List<ChatMessage> recentMessages = chatMessageRepository.findTop5ByRoomIdOrderBySequenceOrderDesc(roomId);
 
+    log.debug("없는겨? recentMessages:: {}", recentMessages);
+
     if (recentMessages.isEmpty()) return;
 
     // Metadata 에서 key_event 추출
@@ -128,6 +130,8 @@ public class SummaryServiceImpl implements SummaryService {
 
     // 추출된 사건이 없으면 중단
     if (recentKeyEvents.isEmpty()) return;
+
+    log.debug("recentKeyEvents {}::", recentKeyEvents);
 
     // 리스트 반전 (최신순 -> 시간순: 1->2->3->4->5)
     Collections.reverse(recentKeyEvents);

@@ -8,6 +8,8 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.Resource;
@@ -367,7 +369,8 @@ public class MuseServiceImpl implements MuseService {
 				String aiOutput = rootNode.path("ai_output").asText("");
 				String keyEvent = rootNode.path("key_event").asText("");
 
-				if (aiOutput.isBlank() || keyEvent.isBlank()) throw new RuntimeException("AI 각색 내용 누락");
+				if (aiOutput.isBlank() || keyEvent.isBlank())
+					throw new RuntimeException("AI 각색 내용 누락");
 
 				// 최종 사용자 입력 텍스트 결정 (기존 로직 이식)
 				String finalUserInput;
@@ -393,16 +396,16 @@ public class MuseServiceImpl implements MuseService {
 
 				// AI 각색 결과 및 나머지 정보 저장
 				ChatMessage remakeScene = ChatMessage.builder()
-				.chatRoom(chatRoom)
-				.senderType("CHARACTER") // 리메이크에선 무조건 CHARACTER
-				.messageType(MessageType.REMAKE)
-				.content(aiOutput) // AI가 쓴 소설 각색문
-				.metadata(metaDataMap)
-				.isRead(true) // 리메이크에선 무조건 true
-				.readAt(LocalDateTime.now())
-				.sequenceOrder(lastOrder + 1)
-				.build();
-				
+						.chatRoom(chatRoom)
+						.senderType("CHARACTER") // 리메이크에선 무조건 CHARACTER
+						.messageType(MessageType.REMAKE)
+						.content(aiOutput) // AI가 쓴 소설 각색문
+						.metadata(metaDataMap)
+						.isRead(true) // 리메이크에선 무조건 true
+						.readAt(LocalDateTime.now())
+						.sequenceOrder(lastOrder + 1)
+						.build();
+
 				ChatMessage saved = chatMessageRepository.save(remakeScene);
 				log.info("저장된 메시지 ID: {}", saved.getId());
 
@@ -451,17 +454,46 @@ public class MuseServiceImpl implements MuseService {
 			// 시스템 프롬프트 읽기 및 치환
 			String baseSystemPrompt = StreamUtils.copyToString(aiSystemPromptResource.getInputStream(),
 					StandardCharsets.UTF_8);
+			// 거시적 맥락: 사건 요약 리스트 (번호를 매겨 가독성 향상)
+			String recentKeyEvents = IntStream.range(0, previousMessages.size())
+					.mapToObj(i -> {
+						ChatMessage m = previousMessages.get(i);
+						String event = (m.getMetadata() != null && m.getMetadata().containsKey("key_event"))
+								? m.getMetadata().get("key_event").toString()
+								: "진행된 사건 없음";
+						return (i + 1) + ". " + event;
+					})
+					.collect(Collectors.joining("\n"));
 
-			String initialSummary = (chatRoom.getLastSummary() != null && !chatRoom.getLastSummary().isBlank())
-					? chatRoom.getLastSummary()
-					: (chatRoom.getLastMessage() != null ? chatRoom.getLastMessage() : "이제 막 이야기가 시작되는 단계입니다.");
+			// 미시적 맥락: 직전 대화 (개행을 확실히 포함)
+			int size = previousMessages.size();
+			String lastMessages = previousMessages.stream()
+					.skip(Math.max(0, size - 2))
+					.map(m -> {
+						String role = m.getSenderType().equals("USER") ? "USER" : "AI";
+						// 본문에 포함된 \n을 실제 줄바꿈이 아니라 공백으로 처리하여 한 줄씩 나오게 함
+						String cleanContent = m.getContent().replaceAll("[\\n\\r]+", " ").trim();
+						return String.format("[%s]: %s", role, cleanContent);
+					})
+					.collect(Collectors.joining("\n"));
 
+			// 말투 예시 치환
+			String speechExamples = mainChar.getSpeechExamples() != null
+					? mainChar.getSpeechExamples()
+							.replace("{캐릭터}", mainChar.getName())
+							.replace("{유저}", chatRoom.getUserNickname())
+					: "설정된 말투 예시가 없습니다.";
+
+			// 시스템 프롬프트 치환
 			baseSystemPrompt = baseSystemPrompt
-					.replace("{{totalSummary}}", initialSummary)
+					.replace("{{totalSummary}}", chatRoom.getLastSummary() != null ? chatRoom.getLastSummary() : "이야기 시작")
 					.replace("{{worldSetting}}",
-							chatRoom.getNovel().getWorldSetting() != null ? chatRoom.getNovel().getWorldSetting() : "일반적인 세계관")
+							chatRoom.getNovel().getWorldSetting() != null ? chatRoom.getNovel().getWorldSetting() : "일반 세계관")
 					.replace("{{mainCharName}}", mainChar.getName())
-					.replace("{{userNote}}", chatRoom.getUserNote() != null ? chatRoom.getUserNote() : "특별한 메모 없음");
+					.replace("{{userNote}}", chatRoom.getUserNote() != null ? chatRoom.getUserNote() : "특별한 메모 없음")
+					.replace("{{recentKeyEvents}}", recentKeyEvents)
+					.replace("{{lastMessages}}", lastMessages)
+					.replace("{{speechExamples}}", speechExamples);
 
 			// 모드별 추가 지시문 구성
 			StringBuilder instructionBuilder = new StringBuilder();
@@ -479,42 +511,38 @@ public class MuseServiceImpl implements MuseService {
 			}
 
 			instructionBuilder
-					.append("\n\n[!!! CRITICAL OUTPUT RULE !!!]\n- 반드시 JSON 형식으로 'ai_output'과 'key_event'를 출력하십시오.");
+					.append("\n\n[!!! VARIABLE REPLACEMENT RULE !!!]")
+					.append("\n- User Note(OOC)에 포함된 '{캐릭터}'는 현재 소설의 메인 캐릭터 이름인 '" + mainChar.getName() + "'(으)로 치환하여 출력하십시오.")
+					.append("\n- User Note(OOC)에 포함된 '{유저}'는 현재 사용자의 이름인 '" + chatRoom.getUserNickname() + "'(으)로 치환하여 출력하십시오.")
+					.append("\n- 출력 시 중괄호({})는 제거하고 실제 이름만 사용하십시오.")
+					.append("\n\n[!!! CRITICAL OUTPUT RULE !!!]")
+					.append("\n- 반드시 JSON 형식으로 'ai_output'과 'key_event'를 출력하십시오.")
+					.append("\n- 'ai_output'의 내용은 앞서 전달된 [User Note (OOC)]의 모든 지시사항과 레이아웃 가이드를 완벽히 반영해야 합니다.")
+					.append("\n- 특히 유저 노트에 특정 문구나 포맷(예: > , ##, [ ])의 배치가 명시되어 있다면, 'ai_output' 내의 서사 텍스트에 이를 반드시 포함시키십시오.");
 
 			// 시스템 메시지 추가
 			messages.add(new SystemMessage(baseSystemPrompt + instructionBuilder.toString()));
 
-			// 이전 대화 기록 추가 (맥락 주입)
-			for (ChatMessage message : previousMessages) {
-				// 사용자의 지시 추출
-				String prevInput = "(시스템: 자동 전개됨)";
-				if (message.getMetadata() != null && message.getMetadata().containsKey("user_input")) {
-					prevInput = message.getMetadata().get("user_input").toString();
-				}
+			// 이전 대화 기록 추가 (맥락 주입) - AI 학습용도
+			for (ChatMessage msg : previousMessages) {
+				String prevInput = (msg.getMetadata() != null && msg.getMetadata().containsKey("user_input"))
+						? msg.getMetadata().get("user_input").toString()
+						: "(자동 전개)";
 				messages.add(new UserMessage(prevInput));
 
-				// AI의 이전 답변을 JSON 형태로 변환 (형식 학습용)
-				try {
-					Map<String, Object> prevData = new HashMap<>();
-					// [수정 포인트]: Map은 add가 아니라 put입니다!
-					prevData.put("ai_output", message.getContent());
-
-					String keyEvent = "사건 요약";
-					if (message.getMetadata() != null && message.getMetadata().containsKey("key_event")) {
-						keyEvent = message.getMetadata().get("key_event").toString();
-					}
-					prevData.put("key_event", keyEvent);
-
-					String prevJson = objectMapper.writeValueAsString(prevData);
-					messages.add(new AssistantMessage(prevJson));
-				} catch (JsonProcessingException e) {
-					messages.add(new AssistantMessage(message.getContent()));
-				}
+				// AI 응답을 JSON 형태로 만들어 assistant 메시지로 추가
+				Map<String, String> responseObj = Map.of(
+						"ai_output", msg.getContent(),
+						"key_event", (msg.getMetadata() != null && msg.getMetadata().containsKey("key_event"))
+								? msg.getMetadata().get("key_event").toString()
+								: "사건 요약");
+				messages.add(new AssistantMessage(objectMapper.writeValueAsString(responseObj)));
 			}
 
+			log.debug("AI에게 보내는 말 : {}", baseSystemPrompt + instructionBuilder.toString());
+
 			// 현재 사용자의 새로운 요청 추가 (마지막 UserMessage)
-			String currentPrompt = hasInput ? userText : "이전 흐름을 이어 다음 장면을 작성하세요.";
-			messages.add(new UserMessage(currentPrompt));
+			messages.add(new UserMessage(userInput != null && !userInput.isEmpty() ? userInput : "이전 흐름을 이어 다음 장면을 작성하세요."));
 
 		} catch (IOException e) {
 			log.error("프롬프트 파일을 읽거나 처리하는 중 오류 발생", e);
@@ -535,9 +563,10 @@ public class MuseServiceImpl implements MuseService {
 		int count = isAuto ? 5 : 3; // 자동전개 모드에 따라 갯수 변경
 
 		// 최근 n개 장면 조회 및 정렬
-		List<ChatMessage> previousMessages = chatMessageRepository.findByChatRoomIdOrderBySequenceOrder(roomId,
+		List<ChatMessage> previousMessages = chatMessageRepository.findByChatRoomIdOrderBySequenceOrderDesc(
+				roomId,
 				PageRequest.of(0, count));
-		Collections.reverse(previousMessages); // 반대로 정렬
+		Collections.reverse(previousMessages);
 
 		// 현재 Chat_room 조회
 		ChatRoom chatRoom = chatRoomRepository.findById(roomId)

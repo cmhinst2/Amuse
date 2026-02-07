@@ -14,9 +14,8 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
   @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId ORDER BY m.sequenceOrder ASC")
   List<ChatMessage> findByRoomIdOrderBySequenceOrder(@Param("roomId") Long roomId);
 
-  List<ChatMessage> findByChatRoomIdOrderBySequenceOrder(Long roomId, PageRequest of);
+  List<ChatMessage> findByChatRoomIdOrderBySequenceOrderDesc(Long roomId, PageRequest of);
 
   @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId ORDER BY m.sequenceOrder DESC LIMIT 5")
   List<ChatMessage> findTop5ByRoomIdOrderBySequenceOrderDesc(@Param("roomId") Long roomId);
-
 }

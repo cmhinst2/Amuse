@@ -118,7 +118,6 @@ public class MuseController {
 	 */
 	@PostMapping("create/message")
 	public ResponseEntity<ChatMessageResponse> generateNextMessage(@RequestBody ChatMessageRequest request) {
-		log.debug("request :: {}", request);
 		ChatMessageResponse response = null;
 		if(request.getRoomMode().equals("REMAKE")) {
 			response = museService.generateNextRemakeMessage(request);

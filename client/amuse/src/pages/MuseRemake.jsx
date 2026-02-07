@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useRef, useEffect } from 'react';
-import { StickyNote, Edit3, Save, X, Sparkles, User, Info, BookOpen } from 'lucide-react';
+import { StickyNote, Edit3, Save, X, Sparkles, User, Info, BookOpen, RotateCcw, SquarePen } from 'lucide-react';
 import { useNovel } from '../hooks/useNovel';
 import { useParams, useNavigate } from 'react-router-dom';
 import { EditorInput, EditorToolbar, SceneArticle } from './StudioWriteContent';
@@ -126,11 +126,17 @@ const MuseRemake = () => {
       setIsAutoMode(false);
     },
     onError: (err, newScene, context) => {
+      setUserInput(newScene.userInput); // 실패 시 이전에 사용자가 입력했던 내용으로 되돌려둠
       const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId];
       if (context?.previousData) {
         queryClient.setQueryData(queryKey, context.previousData);
       }
       toast.error("전개 생성에 실패했습니다.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['muse', 'chatRoom', 'chatMessages', roomId]
+      });
     }
   });
 
@@ -155,17 +161,6 @@ const MuseRemake = () => {
     onSuccess: (updatedScene) => {
       queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
         return old?.map(s => s.sceneId === updatedScene.sceneId ? updatedScene : s);
-      });
-
-      // 호감도 세팅
-      queryClient.setQueryData(['novel', novelId], (oldNovel) => {
-        if (!oldNovel) return oldNovel;
-        return {
-          ...oldNovel,
-          characters: oldNovel.characters.map(char =>
-            char.role === 'MAIN' ? { ...char, affinity: updatedScene.affinity } : char
-          )
-        };
       });
 
       toast.success("서사가 다시 쓰여졌습니다.");
@@ -216,11 +211,13 @@ const MuseRemake = () => {
     },
     onError: (err, newNote, context) => {
       queryClient.setQueryData(['muse', 'chatRoom', 'chatMessages', roomId], context.previousData);
+      toast.error("유저 노트 업데이트 실패");
     },
     onSettled: () => {
       queryClient.invalidateQueries(['muse', 'chatRoom', 'chatMessages', roomId]);
     },
     onSuccess: () => {
+      toast.success("유저 노트 업데이트 성공!");
       setIsUserNoteEditing(false)
     }
   });
@@ -377,12 +374,11 @@ const MuseRemake = () => {
 
   // 유저 노트 값에 따른 편집 모드 변경
   useEffect(() => {
-    if (userNote == '') {
-      setIsUserNoteEditing(true)
-    } else {
-      setIsUserNoteEditing(false)
+    // 데이터가 로드되었고, 기존에 작성된 노트가 없다면 편집 모드로 시작
+    if (!isLoadingMessage && (!userNote || userNote.trim() === '')) {
+      setIsUserNoteEditing(true);
     }
-  }, [userNote])
+  }, [isLoadingMessage])
 
   // 메시지가 추가될 때마다 하단 스크롤
   useEffect(() => {
@@ -501,9 +497,9 @@ const MuseRemake = () => {
                         handleSubmitEdit={handleSubmitEdit}
                         isEditPending={isEditPending}
                       />
-                      {msg.length - 1 === index &&
+                      {messageList.length - 1 === index &&
                         <section className="self-end flex gap-3">
-                          <button onClick={() => handleEdit(!isEditMode, scene)} className="hover:text-[#FB7185]">
+                          <button onClick={() => handleEdit(!isEditMode, msg)} className="hover:text-[#FB7185]">
                             {isEditMode ? <X /> : <SquarePen size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />}
                           </button>
                           <button onClick={() => handleRegenerateClick(scene)} className="hover:text-[#FB7185]">
@@ -514,7 +510,6 @@ const MuseRemake = () => {
                     </div>
                   )
                 })}
-                <div className="h-40" />
                 <div ref={bottomRef} className="h-1" />
               </div>
             </main>
