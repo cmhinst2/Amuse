@@ -448,6 +448,7 @@ export function StudioWriteContent() {
 
 // 장면 렌더링 컴포넌트
 export const SceneArticle = (props) => {
+  console.log("장면 렌더링 : ", props)
   const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode,
     editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending } = props;
   const isNewLastScene = checkLastScene && checkNewScene;
@@ -461,7 +462,7 @@ export const SceneArticle = (props) => {
 
   // 사용자 입력값
   // 낙관적 데이터이거나, sequenceOrder가 0이 아닌 서버 데이터일 때
-  const hasUserInput = (isPendingAI || scene.sequenceOrder !== 0) && scene.userInput;
+  const hasUserInput = (isPendingAI || scene.sequenceOrder !== 0) && scene.metadata?.user_input;
 
   useEffect(() => {
     if (isTyping && mainScrollRef.current) {
@@ -480,7 +481,7 @@ export const SceneArticle = (props) => {
         <article className={`bg-[#1e293b] rounded-xl p-4 mb-6 border border-[#334155] transition-all
             ${isPendingAI ? 'opacity-70 border-[#FB7185]/40 ring-1 ring-[#FB7185]/20 shadow-[0_0_15px_rgba(251,113,133,0.1)]' : ''}`}>
           <p className="text-base leading-[1.8] text-[#94A3B8] whitespace-pre-wrap tracking-wide">
-            {scene.userInput}
+            {scene.metadata.user_input}
           </p>
         </article>
       )}

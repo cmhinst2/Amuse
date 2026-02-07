@@ -335,7 +335,10 @@ public class NovelServiceImpl implements NovelService {
 	@Transactional(readOnly = true)
 	@Override
 	public List<StorySceneResponse> getScenes(Long novelId) {
-		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId).stream().map(StorySceneResponse::from).toList();
+		return storySceneRepository.findByNovelIdOrderByIdAsc(novelId)
+		.stream()
+		.map(StorySceneResponse::from)
+		.toList();
 	}
 
 	/**

@@ -27,24 +27,52 @@ const MuseRemake = () => {
   const mainScrollRef = useRef(null); // 실제 스크롤되는 <main> 태그용
 
   const queryClient = useQueryClient();
-  //const cachedMessages = queryClient.getQueryData(['muse', 'chatRoom', 'detail', roomId]);
 
   // fetch
   const { data: novel, isLoading } = useNovel(novelId, { refetchOnWindowFocus: false });
-  const { data, isLoading: isLoadingMessage } = useChatMessage(roomId, {
+  // 이전 리메이크 장면 fetch
+  const { data: { messageList = [], roomInfo = null } = {}, isLoading: isLoadingMessage } = useChatMessage(roomId, {
     enabled: !!roomId,
     refetchOnWindowFocus: false,
     select: (rawData) => {
+      const messages = rawData.messages || [];
+
+      const processedMessages = messages.map(msg => {
+        // 낙관적 업데이트 데이터는 정제 건너뛰기
+        if (msg.isOptimistic) return msg;
+
+        // 텍스트 정제 (원작 소설 로직 이식)
+        let cleanedContent = msg.content || "";
+        if (cleanedContent) {
+          cleanedContent = cleanedContent
+            .replace(/\\"/g, '"')
+            .replace(/\\n/g, '\n')
+            .replace(/("[^"]*")/g, ' $1 ')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+        }
+
+        return {
+          ...msg,
+          content: cleanedContent,
+          isAi: msg.senderType === 'CHARACTER',
+          isRemake: msg.messageType === 'REMAKE'
+        };
+      });
+
+      // 순서 정렬 (sequenceOrder 기준)
+      const sortedMessages = [...processedMessages].sort((a, b) => a.sequenceOrder - b.sequenceOrder);
+
       return {
-        messageList: rawData.messages || [],
-        roomInfo: rawData.roomInfo
-      }
-    }
+        messageList: sortedMessages,
+        roomInfo: rawData.roomInfo,
+        lastMessage: sortedMessages[sortedMessages.length - 1]
+      };
+    },
   });
 
   // 메모이제이션
   const mainCharacter = useMemo(() => novel?.characters?.find(c => c.role === 'MAIN'), [novel]);
-  const { messageList = [], roomInfo = null } = data || {};
 
   // <Mutaion>
   // 새로운 신 생성 요청
@@ -57,57 +85,52 @@ const MuseRemake = () => {
     },
     retryDelay: 1000, // 1초 뒤에 시도
     onMutate: async (newSceneRequest) => { // 서버에 요청 보내기 직전에 수행
-      //cancelQueries는 비동기로 동작 : 현재 실행 중인 데이터 fetching을 강제로 멈추는 것
-      // 수동으로 화면 바꿀 거니까, 서버에서 가져오던 건 일단 다 취소
-      await queryClient.cancelQueries({ queryKey: ['novel', 'scenes', novelId] });
-      const previousScenes = queryClient.getQueryData(['novel', 'scenes', novelId]); // 기존 데이터 스냅샷 저장 (에러 발생 시 복구용)
+      const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId];
+      await queryClient.cancelQueries({ queryKey });
+      const previousData = queryClient.getQueryData(queryKey);
 
       // UI 표시 텍스트
-      let displayInput = newSceneRequest.content;
-
-      if (!newSceneRequest.content || newSceneRequest.content.trim() === "") { // 입력이 아예 없거나 공백인 경우
+      let displayInput = newSceneRequest.userInput;
+      if (!displayInput || displayInput.trim() === "") { // 입력이 아예 없거나 공백인 경우
         displayInput = "자동 전개 모드(AUTO) : 사용자 입력이 없습니다.";
       } else if (newSceneRequest.mode === 'AUTO') { // 입력은 있는데 모드가 AUTO인 경우 (가이드형 자동 전개)
-        displayInput = `자동 전개 모드(AUTO) : ${newSceneRequest.content}`;
+        displayInput = `자동 전개 모드(AUTO) : ${newSceneRequest.userInput}`;
       }
 
-      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => [ // 임시 저장 데이터를 리스트에 바로 저장
-        ...(old || []),
-        {
-          id: Date.now(), // 임시 ID
-          userInput: displayInput,
-          aiOutput: "", // AI 응답 대기 상태
-          isOptimistic: true, // UI에서 로딩 스피너 등을 보여주기 위한 플래그
-          sequenceOrder: (old?.length || 0) + 1 // 순서 임시 부여
-        }
-      ]);
-      return { previousScenes };
-    },
-    onSuccess: (newScene) => { // 성공 시
-      setNewlyCreatedSceneId(newScene.sceneId); // 방금 생성된 새로운 장면 ID 저장
-
-      // 낙관적 업데이트 임시 데이터 제거, 진짜 데이터를 넣기
-      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
-        const filteredOld = old?.filter(s => !s.isOptimistic) || [];
-        return [...filteredOld, newScene];
+      // 낙관적 업데이트 수행
+      queryClient.setQueryData(queryKey, (old) => {
+        const currentMessages = old?.messages || [];
+        return {
+          ...old,
+          messages: [
+            ...currentMessages,
+            {
+              id: Date.now(), // 임시 ID
+              content: displayInput,
+              senderType: 'USER', // 사용자가 보낸 것이므로 USER
+              messageType: 'REMAKE',
+              isOptimistic: true, // 로딩 표시용
+              sequenceOrder: currentMessages.length + 1,
+              createdAt: new Date().toISOString(),
+            }
+          ]
+        };
       });
-
-      // 입력창 초기화
+      return { previousData };
+    },
+    onSuccess: (newScene) => {
+      const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId];
+      setNewlyCreatedSceneId(newScene.messageDetail?.id);
+      queryClient.invalidateQueries({ queryKey });
       setUserInput('');
       setIsAutoMode(false);
-      if (textareaRef.current) textareaRef.current.style.height = 'auto';
     },
     onError: (err, newScene, context) => {
-      if (context?.previousScenes) {
-        queryClient.setQueryData(['novel', 'scenes', novelId], context.previousScenes);
+      const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId];
+      if (context?.previousData) {
+        queryClient.setQueryData(queryKey, context.previousData);
       }
-      toast.error("다시 시도해 주세요", {
-        description: `${getJosa(mainCharacter.name, "이", "가")} 대답을 망설이고 있네요`,
-        action: {
-          label: "확인",
-          onClick: () => console.log("Confirm"),
-        },
-      });
+      toast.error("전개 생성에 실패했습니다.");
     }
   });
 
@@ -212,19 +235,99 @@ const MuseRemake = () => {
   // AI에게 사용자의 내용 전달 or 자동전개 요청
   const handleSend = () => {
     const trimmedInput = userInput.trim();
-    if (!isAutoMode && !trimmedInput) return; // 자동모드가 아닌데 사용자 입력 비었을 때
+    if (!isAutoMode && !trimmedInput) return;
 
-    console.log(messageList)
-    console.log(roomInfo)
     generateScene({
-      roomId: roomInfo.roomId,
+      roomId: roomId,
       roomMode: 'REMAKE',
       autoMode: isAutoMode ? 'AUTO' : 'USER',
       userInput: trimmedInput,
-      lastSceneId: messageList[messageList.length - 1]?.id, // 마지막 챗 ID (서사 연속성 유지)
+      lastSceneId: messageList[messageList.length - 1]?.id,
     });
-    setUserInput(""); // 입력창 초기화
+    setUserInput("");
   };
+
+  // AI 응답(마지막 씬) 재생성 핸들러
+  const handleRegenerate = (scene) => {
+    reGenerateScene({
+      novelId: scene.novelId,
+      lastSceneId: scene.sceneId
+    });
+  }
+
+  // 재생성 클릭 시 이벤트 핸들러
+  const handleRegenerateClick = (scene) => {
+
+    if (scene.edited) {
+      toast.error("이미 수정된 장면입니다", {
+        description: "수정된 장면은 재생성 할 수 없어요!",
+        style: {
+          background: '#4f46e5', // Amuse 카드 배경색
+          color: '#F1F5F9',      // 메인 텍스트색
+          border: '1px solid #4f46e5', // 로즈 포인트 테두리
+        },
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
+      return;
+    }
+
+    if (scene.regenerated) {
+      toast("[AI 재생성 요청]", {
+        description: "응답을 다시 생성하시겠습니까?",
+        duration: Infinity, // 신중한 결정을 위해 자동으로 닫히지 않음
+        action: {
+          label: "영혼석 -8",
+          onClick: () => {
+            // [로직 A] 영혼석 차감 API 호출 후 재생성 로직 실행
+            useSoulStoneAndRegenerate(scene.sceneId);
+          },
+        },
+        cancel: {
+          label: "취소",
+          onClick: () => console.log("결제 취소"),
+        },
+        // 유료 결제이므로 조금 더 눈에 띄는 스타일링
+        style: {
+          background: '#FB7185',
+          border: '1px solid #FB7185', // 로즈 포인트 테두리
+          color: '#F1F5F9',
+        },
+        actionButtonStyle: {
+          backgroundColor: '#4f46e5',
+          color: '#F1F5F9',
+          fontWeight: 'bold',
+        },
+      });
+      return;
+    }
+
+    // 처음 재생성하는 경우 (무료 로직)
+    handleRegenerate(scene);
+  }
+
+  // 편집 내용으로 재요청 핸들러
+  const handleSubmitEdit = () => {
+    const trimmedInput = editInput.trim();
+    if (isEditMode && trimmedInput.length === 0) {
+      toast.error("편집 재요청 오류!", {
+        description: "내용은 비어있을 수 없어요~",
+        action: {
+          label: "확인",
+          onClick: () => console.log("Confirm"),
+        },
+      });
+      return;
+    }
+
+    editGenerateScene({
+      novelId: novelData.id,
+      content: trimmedInput,
+      lastSceneId: scenes[scenes.length - 1]?.sceneId
+    });
+  }
 
   // 편집/일반 상태 변경 핸들러
   const handleEdit = (flag, scene) => {
@@ -267,10 +370,10 @@ const MuseRemake = () => {
   // useEffect
   // 유저 노트값 세팅
   useEffect(() => {
-    if (data?.roomInfo?.userNote) {
-      setUserNote(data.roomInfo.userNote);
+    if (roomInfo?.userNote) {
+      setUserNote(roomInfo.userNote);
     }
-  }, [data?.roomInfo?.userNote]);
+  }, [roomInfo?.userNote]);
 
   // 유저 노트 값에 따른 편집 모드 변경
   useEffect(() => {
@@ -389,14 +492,14 @@ const MuseRemake = () => {
                       <SceneArticle
                         scene={msg}
                         mainCharacter={mainCharacter}
-                        checkLastScene={msg.length - 1 === index}
-                        checkNewScene={msg.sequenceOrder === newlyCreatedSceneId}
+                        checkLastScene={messageList.length - 1 === index}
+                        checkNewScene={msg.id === newlyCreatedSceneId}
                         isEditMode={isEditMode}
                         editInput={editInput}
                         setEditInput={setEditInput}
                         mainScrollRef={mainScrollRef}
-                        handleSubmitEdit={null}
-                        isEditPending={null}
+                        handleSubmitEdit={handleSubmitEdit}
+                        isEditPending={isEditPending}
                       />
                       {msg.length - 1 === index &&
                         <section className="self-end flex gap-3">

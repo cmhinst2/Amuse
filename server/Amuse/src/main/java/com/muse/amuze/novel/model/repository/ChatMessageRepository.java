@@ -11,7 +11,7 @@ import com.muse.amuze.novel.model.entity.ChatMessage;
 
 public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 
-  @Query("SELECT m FROM ChatMessage m WHERE m.id = :roomId ORDER BY m.sequenceOrder ASC")
+  @Query("SELECT m FROM ChatMessage m WHERE m.chatRoom.id = :roomId ORDER BY m.sequenceOrder ASC")
   List<ChatMessage> findByRoomIdOrderBySequenceOrder(@Param("roomId") Long roomId);
 
   List<ChatMessage> findByChatRoomIdOrderBySequenceOrder(Long roomId, PageRequest of);

@@ -288,7 +288,7 @@ public class MuseServiceImpl implements MuseService {
 	}
 
 	/**
-	 * Chatroom의 message 조회
+	 * Chatroom의 모든 message 조회
 	 *
 	 */
 	@Transactional(readOnly = true)
@@ -303,7 +303,7 @@ public class MuseServiceImpl implements MuseService {
 				.map(m -> MessageDetail.builder()
 						.id(m.getId())
 						.senderType(m.getSenderType())
-						.messageType(m.getMessageType().name())
+						.messageType(m.getMessageType())
 						.content(m.getContent())
 						.sequenceOrder(m.getSequenceOrder())
 						.metadata(m.getMetadata())
@@ -399,6 +399,7 @@ public class MuseServiceImpl implements MuseService {
 				.content(aiOutput) // AI가 쓴 소설 각색문
 				.metadata(metaDataMap)
 				.isRead(true) // 리메이크에선 무조건 true
+				.readAt(LocalDateTime.now())
 				.sequenceOrder(lastOrder + 1)
 				.build();
 				
@@ -410,7 +411,7 @@ public class MuseServiceImpl implements MuseService {
 					summaryService.remakeSummarizeInterval(chatRoom.getId());
 				}
 
-				//return ChatMessageResponse.of(remakeScene, mainChar);
+				return ChatMessageResponse.of(remakeScene);
 
 			} catch (Exception e) {
 				attempt++;

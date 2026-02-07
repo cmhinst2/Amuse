@@ -15,10 +15,10 @@ const queryClient = new QueryClient({
 })
 
 createRoot(document.getElementById('root')).render(
-  <StrictMode>
+  // <StrictMode>
     <QueryClientProvider client={queryClient}>
       <App />
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
-  </StrictMode>,
+  // </StrictMode>,
 )
