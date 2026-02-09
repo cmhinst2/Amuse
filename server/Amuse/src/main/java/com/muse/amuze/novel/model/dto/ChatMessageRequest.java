@@ -14,5 +14,5 @@ public class ChatMessageRequest {
   private String roomMode;
   private String autoMode;
   private String userInput;
-  private Integer lastSceneId;
+  private Long lastSceneId;
 }

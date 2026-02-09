@@ -17,8 +17,6 @@ import com.muse.amuze.novel.model.dto.ChatRoomRequest;
 import com.muse.amuze.novel.model.dto.MyMuseResponse;
 import com.muse.amuze.novel.model.dto.NovelResponse;
 import com.muse.amuze.novel.model.dto.UserNoteRequest;
-import com.muse.amuze.novel.model.entity.Novel;
-import com.muse.amuze.novel.model.entity.StoryScene;
 import com.muse.amuze.novel.model.service.MuseService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -105,7 +103,8 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
-	/** 유저노트 수정 요청
+	/**
+	 * 유저노트 수정 요청
 	 */
 	@PatchMapping("editUserNote")
 	public ResponseEntity<String> updateUserNote(@RequestBody UserNoteRequest request) {
@@ -113,13 +112,14 @@ public class MuseController {
 		return ResponseEntity.ok(updatedNote);
 	}
 
-	/** REMAKE or CHAT 메시지 생성
+	/**
+	 * REMAKE or CHAT 메시지 생성(AI)
 	 * 
 	 */
 	@PostMapping("create/message")
 	public ResponseEntity<ChatMessageResponse> generateNextMessage(@RequestBody ChatMessageRequest request) {
 		ChatMessageResponse response = null;
-		if(request.getRoomMode().equals("REMAKE")) {
+		if (request.getRoomMode().equals("REMAKE")) {
 			response = museService.generateNextRemakeMessage(request);
 		} else {
 			response = museService.generateNextChatMessage(request);
@@ -127,8 +127,22 @@ public class MuseController {
 		return ResponseEntity.ok(response);
 	}
 
+	/**
+	 * REMAKE or CHAT 메시지 재생성(AI)
+	 * 
+	 */
+	@PostMapping("rooms/{roomId}/messages/{id}/regenerate")
+	public ResponseEntity<ChatMessageResponse> regenerateMessage(@PathVariable("roomId") Long roomId,
+			@PathVariable("id") Long id) throws Exception {
+		ChatMessageResponse response = museService.regenerateMessage(roomId, id);
+		return ResponseEntity.ok(response);
+	}
 
-
-
+	@PostMapping("editMessage")
+	public ResponseEntity<?> editLastMessage(@RequestBody ChatMessageRequest request) {
+				log.debug("수정 request : {}", request);
+		ChatMessageResponse response = museService.editLastMessage(request);
+		return ResponseEntity.ok(response);
+	}
 
 }

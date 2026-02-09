@@ -25,6 +25,7 @@ const MuseRemake = () => {
   const textareaRef = useRef(null);
   const bottomRef = useRef(null);     // 맨 아래 도착지점용
   const mainScrollRef = useRef(null); // 실제 스크롤되는 <main> 태그용
+  const isFirstRender = useRef(true); // 첫 진입 여부 추적
 
   const queryClient = useQueryClient();
 
@@ -142,55 +143,86 @@ const MuseRemake = () => {
 
   // 마지막 신 재생성 요청
   const { mutate: reGenerateScene, isPending: isRegenPending } = useMutation({
-    mutationFn: (payload) => amuseAPI.post('/api/novel/regenerate', payload).then(res => res.data),
-    onMutate: async (reSceneRequest) => {
-      await queryClient.cancelQueries({ queryKey: ['novel', 'scenes', novelId] });
-      const previousScenes = queryClient.getQueryData(['novel', 'scenes', novelId]);
+    mutationFn: async ({ roomId, id }) => {
+      const res = await amuseAPI.post(`/api/muse/rooms/${roomId}/messages/${id}/regenerate`);
+      return res.data;
+    },
+    onMutate: async ({ roomId, id }) => {
+      const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId]; // roomId는 상위 컨텍스트에서 가져온다고 가정
+      await queryClient.cancelQueries({ queryKey });
+      const previousMessages = queryClient.getQueryData(queryKey);
 
-      // 기존 scene중 해당 sceneId를 가진것을 로딩 중 상태로 변경
-      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
-        return old?.map(s =>
-          s.sceneId === reSceneRequest.lastSceneId
-            ? { ...s, aiOutput: "새로운 전개를 불러오는 중...", isOptimistic: true }
-            : s
+      queryClient.setQueryData(queryKey, (old) => {
+        if (!old) return old;
+        const updatedList = (old.messages || []).map(msg =>
+          msg.id === id
+            ? { ...msg, content: "AI 작가가 장면을 다시 그리는 중입니다...", isOptimistic: true }
+            : msg
         );
+        return {
+          ...old,
+          messages: updatedList
+        };
       });
-
-      return { previousScenes };
+      return { previousMessages, roomId };
     },
-    onSuccess: (updatedScene) => {
-      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
-        return old?.map(s => s.sceneId === updatedScene.sceneId ? updatedScene : s);
+    onSuccess: (updatedMsg) => {
+      const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId];
+      queryClient.setQueryData(queryKey, (old) => {
+        return old?.map(msg => msg.id === updatedMsg.id ? updatedMsg : msg);
       });
-
-      toast.success("서사가 다시 쓰여졌습니다.");
+      toast.success("장면이 성공적으로 다시 쓰여졌습니다.");
     },
-    onError: (err, variables, context) => {
-      if (context?.previousScenes) {
-        queryClient.setQueryData(['novel', 'scenes', novelId], context.previousScenes);
+    onError: (err, payload, context) => {
+      const queryKey = ['muse', 'chatRoom', 'chatMessages', roomId];
+      if (context?.previousMessages) {
+        queryClient.setQueryData(queryKey, context.previousMessages);
       }
-      toast.error("재생성에 실패했습니다.");
+      toast.error("재생성에 실패했습니다. 서버 연결을 확인해주세요.");
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['muse', 'chatRoom', 'chatMessages', roomId] });
     }
   });
 
   // 마지막 신 편집 요청
   const { mutate: editGenerateScene, isPending: isEditPending } = useMutation({
-    mutationFn: (payload) => amuseAPI.post('/api/novel/editScene', payload).then(res => res.data),
-    onSuccess: (updatedScene) => {
-      // 캐시에 저장된 데이터를 교체
-      queryClient.setQueryData(['novel', 'scenes', novelId], (old) => {
-        return old.map(s => s.sceneId === updatedScene.sceneId ? updatedScene : s);
+    mutationFn: (payload) => amuseAPI.post('/api/muse/editMessage', payload).then(res => res.data),
+    onMutate: async (newPayload) => {
+      await queryClient.cancelQueries({ queryKey: ['muse', 'chatRoom', 'chatMessages', roomId] });
+      const previousMessages = queryClient.getQueryData(['muse', 'chatRoom', 'chatMessages', roomId]);
+
+      // 캐시를 수정 중 상태로 즉시 업데이트
+      queryClient.setQueryData(['muse', 'chatRoom', 'chatMessages', roomId], (old) => {
+        if (!old) return old;
+        return {
+          ...old,
+          messages: (old.messages || []).map(msg =>
+            msg.id === newPayload.id
+              ? { ...msg, content: "마지막 장면을 수정 중입니다...", isOptimistic: true }
+              : msg
+          )
+        };
       });
-      setIsEditMode(false);
+
+      // 컨텍스트에 스냅샷 저장
+      return { previousMessages };
     },
-    onError: (err, newScene, context) => {
+
+    // 에러 발생 시
+    onError: (err, newPayload, context) => {
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['muse', 'chatRoom', 'chatMessages', roomId], context.previousMessages);
+      }
       toast.error("편집 오류!", {
-        description: "다시 시도 해주세요~",
-        action: {
-          label: "확인",
-          onClick: () => console.log("Confirm"),
-        },
+        description: "다시 시도해 주세요.",
       });
+    },
+
+    // 성공 혹은 실패 후
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: ['muse', 'chatRoom', 'chatMessages', roomId] });
+      setIsEditMode(false);
     }
   });
 
@@ -245,17 +277,17 @@ const MuseRemake = () => {
   };
 
   // AI 응답(마지막 씬) 재생성 핸들러
-  const handleRegenerate = (scene) => {
+  const handleRegenerate = (msg) => {
     reGenerateScene({
-      novelId: scene.novelId,
-      lastSceneId: scene.sceneId
+      roomId: roomId,
+      id: msg.id
     });
   }
 
   // 재생성 클릭 시 이벤트 핸들러
-  const handleRegenerateClick = (scene) => {
+  const handleRegenerateClick = (msg) => {
 
-    if (scene.edited) {
+    if (msg.metadata.is_edited) {
       toast.error("이미 수정된 장면입니다", {
         description: "수정된 장면은 재생성 할 수 없어요!",
         style: {
@@ -271,25 +303,24 @@ const MuseRemake = () => {
       return;
     }
 
-    if (scene.regenerated) {
+    if (msg.metadata.is_regenerated) {
       toast("[AI 재생성 요청]", {
         description: "응답을 다시 생성하시겠습니까?",
-        duration: Infinity, // 신중한 결정을 위해 자동으로 닫히지 않음
+        duration: Infinity,
         action: {
           label: "영혼석 -8",
           onClick: () => {
-            // [로직 A] 영혼석 차감 API 호출 후 재생성 로직 실행
-            useSoulStoneAndRegenerate(scene.sceneId);
+            // 나중에 영혼석 차감 기능 추가
+            //useSoulStoneAndRegenerate(msg.roomId);
           },
         },
         cancel: {
           label: "취소",
           onClick: () => console.log("결제 취소"),
         },
-        // 유료 결제이므로 조금 더 눈에 띄는 스타일링
         style: {
           background: '#FB7185',
-          border: '1px solid #FB7185', // 로즈 포인트 테두리
+          border: '1px solid #FB7185',
           color: '#F1F5F9',
         },
         actionButtonStyle: {
@@ -302,11 +333,11 @@ const MuseRemake = () => {
     }
 
     // 처음 재생성하는 경우 (무료 로직)
-    handleRegenerate(scene);
+    handleRegenerate(msg);
   }
 
   // 편집 내용으로 재요청 핸들러
-  const handleSubmitEdit = () => {
+  const handleSubmitEdit = (id) => {
     const trimmedInput = editInput.trim();
     if (isEditMode && trimmedInput.length === 0) {
       toast.error("편집 재요청 오류!", {
@@ -318,17 +349,18 @@ const MuseRemake = () => {
       });
       return;
     }
-
+    // 수정 요청
     editGenerateScene({
-      novelId: novelData.id,
-      content: trimmedInput,
-      lastSceneId: scenes[scenes.length - 1]?.sceneId
+      roomId: roomId,
+      userInput: trimmedInput,
+      lastSceneId: id
+      // id: scenes[scenes.length - 1]?.sceneId
     });
   }
 
   // 편집/일반 상태 변경 핸들러
-  const handleEdit = (flag, scene) => {
-    if (scene.regenerated) {
+  const handleEdit = (flag, msg) => {
+    if (msg.metadata.is_regenerated) {
       toast.error("재생성 된 장면입니다", {
         description: "재생성된 장면은 수정할 수 없어요!",
         style: {
@@ -344,7 +376,7 @@ const MuseRemake = () => {
       return;
     }
 
-    if (scene.edited) {
+    if (msg.metadata.is_edited) {
       toast.error("이미 수정된 장면입니다", {
         description: "생성된 장면의 수정 기회는 1번뿐이에요!",
         style: {
@@ -361,7 +393,7 @@ const MuseRemake = () => {
     }
 
     setIsEditMode(flag);
-    setEditInput(scene.content);
+    setEditInput(msg.content);
   }
 
   // useEffect
@@ -380,22 +412,31 @@ const MuseRemake = () => {
     }
   }, [isLoadingMessage])
 
-  // 메시지가 추가될 때마다 하단 스크롤
+  // 스크롤 관련
   useEffect(() => {
-    if (!isLoadingMessage && messageList.length > 0 && mainScrollRef.current) {
+    if (messageList.length > 0 && bottomRef.current) {
+      // 페이지에 처음 진입한 경우
+      if (isFirstRender.current) {
+        bottomRef.current.scrollIntoView({ block: 'end' }); // 즉시(instant) 하단으로 이동
+        isFirstRender.current = false; // 플래그 변경
+        return;
+      }
+
+      // 새로운 장면이 작성 중이거나 추가된 경우
+      const scrollBehavior = 'smooth';
+
       const timer = setTimeout(() => {
-        if (bottomRef.current) {
-          bottomRef.current.scrollIntoView({
-            behavior: messageList.length <= 1 ? 'auto' : 'smooth', // 첫 장면이면 즉시, 아니면 부드럽게
-            block: 'end',
-          });
-        }
-      }, 100);
+        bottomRef.current?.scrollIntoView({
+          behavior: scrollBehavior,
+          block: 'end',
+        });
+      }, 50);
+
       return () => clearTimeout(timer);
     }
-  }, [messageList]);
+  }, [messageList, isLoadingMessage]);
 
-  if (isLoading || isLoadingMessage) return <LoadingScreen text={'소설 불러오는 중...'} />;
+  if (isLoading || isLoadingMessage) return <LoadingScreen text={'불러오는 중...'} />;
 
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden relative">
@@ -502,7 +543,7 @@ const MuseRemake = () => {
                           <button onClick={() => handleEdit(!isEditMode, msg)} className="hover:text-[#FB7185]">
                             {isEditMode ? <X /> : <SquarePen size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />}
                           </button>
-                          <button onClick={() => handleRegenerateClick(scene)} className="hover:text-[#FB7185]">
+                          <button onClick={() => handleRegenerateClick(msg)} className="hover:text-[#FB7185]">
                             <RotateCcw size={20} className="transition-transform duration-300 ease-in-out hover:scale-125" />
                           </button>
                         </section>

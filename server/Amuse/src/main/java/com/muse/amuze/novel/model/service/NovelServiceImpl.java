@@ -301,9 +301,6 @@ public class NovelServiceImpl implements NovelService {
 
 		// AI 전달용 message 데이터 준비(novel, userChar, mainChar, previousScenes)
 		NovelContext ctx = prepareContext(novelRequest.getNovelId(), false);
-
-		// 기존장면에서 가져온 이전 호감도 변화 취소
-		// novel의 메인 캐릭터 호감도 복구
 		Character mainChar = ctx.mainChar();
 
 		// AI 전달 message bulider로 생성

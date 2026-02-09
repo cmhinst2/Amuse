@@ -27,4 +27,8 @@ public interface MuseService {
 	ChatMessageResponse generateNextRemakeMessage(ChatMessageRequest request);
 
 	ChatMessageResponse generateNextChatMessage(ChatMessageRequest request);
+
+  ChatMessageResponse regenerateMessage(Long roomId, Long id) throws Exception;
+
+	ChatMessageResponse editLastMessage(ChatMessageRequest request);
 }

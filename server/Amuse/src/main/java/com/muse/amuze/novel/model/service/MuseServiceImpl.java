@@ -25,6 +25,7 @@ import org.springframework.ai.openai.OpenAiChatModel;
 import org.springframework.beans.factory.annotation.Value;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.muse.amuze.novel.model.dto.ChatMessageRequest;
@@ -437,6 +438,93 @@ public class MuseServiceImpl implements MuseService {
 	}
 
 	/**
+	 * 호감도 Chat 메시지 (AI) 서비스 + 자동 전개모드 (AUTO)에 따른 로직 처리
+	 * 
+	 * @param novelId
+	 * @return
+	 */
+	@Override
+	public ChatMessageResponse generateNextChatMessage(ChatMessageRequest request) {
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	/**
+	 * Message 재생성 서비스 (AI)
+	 * 
+	 * @param novelId
+	 * @return
+	 * @throws JsonProcessingException
+	 * @throws JsonMappingException
+	 */
+	@Transactional
+	@Override
+	public ChatMessageResponse regenerateMessage(Long roomId, Long id) throws Exception {
+		// 기존 장면 조회
+		ChatMessage chatMessage = chatMessageRepository.findByChatRoomIdAndId(roomId, id)
+				.orElseThrow(() -> new EntityNotFoundException("장면을 찾을 수 없습니다."));
+
+		Map<String, Object> metadata = chatMessage.getMetadata();
+		if (metadata == null)
+			metadata = new HashMap<>();
+
+		// 재생성한적이 있다면
+		if (Boolean.TRUE.equals(metadata.get("is_regenerated"))) {
+			throw new IllegalStateException("이미 재생성된 장면입니다.");
+		}
+
+		// AI 전달용 message 데이터 준비
+		String previousUserInput = (String) metadata.getOrDefault("user_input", "");
+
+		List<Message> messages = buildRemakeMessages(
+				prepareContext(roomId, false),
+				previousUserInput,
+				true);
+
+		// AI에게 다시 요청하여 내용 갱신
+		String jsonResponse = novelService.getAiResponse(messages);
+		log.debug("리메이크 AI 재생성 응답: {}", jsonResponse);
+
+		// AI 응답 파싱
+		JsonNode rootNode = objectMapper.readTree(jsonResponse);
+		String aiOutput = rootNode.get("ai_output").asText();
+		String keyEvent = rootNode.get("key_event").asText();
+
+		// 데이터 업데이트 (기존 metadata 객체를 수정)
+		metadata.put("key_event", keyEvent);
+		metadata.put("is_edited", true); // 재생성 시 수정된 것으로 간주
+		metadata.put("is_regenerated", true);
+
+		chatMessage.setContent(aiOutput);
+		chatMessage.setMetadata(metadata);
+
+		return ChatMessageResponse.of(chatMessage);
+	}
+
+	@Transactional
+	@Override
+	public ChatMessageResponse editLastMessage(ChatMessageRequest request) {
+		ChatMessage chatMessage = chatMessageRepository.findByChatRoomIdAndId(request.getRoomId(), request.getLastSceneId())
+				.orElseThrow(() -> new EntityNotFoundException("장면을 찾을 수 없습니다."));
+
+		Map<String, Object> metadata = chatMessage.getMetadata();
+		if (metadata == null)
+			metadata = new HashMap<>();
+
+		// 수정한적이 있다면
+		if (Boolean.TRUE.equals(metadata.get("is_edited"))) {
+			throw new IllegalStateException("이미 수정된 장면입니다.");
+		}
+		
+		metadata.put("is_edited", true); 
+		metadata.put("is_regenerated", true); // 수정 시 재생성된 것으로 간주
+		chatMessage.setMetadata(metadata);
+		chatMessage.setContent(request.getUserInput());
+
+		return ChatMessageResponse.of(chatMessage);
+	}
+
+	/**
 	 * AI 전달 Message 빌더
 	 * 
 	 * @param mode
@@ -472,7 +560,7 @@ public class MuseServiceImpl implements MuseService {
 					.map(m -> {
 						String role = m.getSenderType().equals("USER") ? "USER" : "AI";
 						// 본문에 포함된 \n을 실제 줄바꿈이 아니라 공백으로 처리하여 한 줄씩 나오게 함
-						String cleanContent = m.getContent().replaceAll("[\\n\\r]+", " ").trim();
+						String cleanContent = m.getContent().replaceAll("[\n\r]+", " ").trim();
 						return String.format("[%s]: %s", role, cleanContent);
 					})
 					.collect(Collectors.joining("\n"));
@@ -578,12 +666,6 @@ public class MuseServiceImpl implements MuseService {
 		Character mainChar = characterRepository.findByNovelIdAndRole(chatRoom.getNovel().getId(), CharacterRole.MAIN);
 
 		return new ChatMessageContext(chatRoom, mainChar, previousMessages, userNote);
-	}
-
-	@Override
-	public ChatMessageResponse generateNextChatMessage(ChatMessageRequest request) {
-		// TODO Auto-generated method stub
-		return null;
 	}
 
 }

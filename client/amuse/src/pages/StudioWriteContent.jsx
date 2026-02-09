@@ -494,7 +494,7 @@ export const SceneArticle = (props) => {
                   placeholder="AI가 생성한 내용을 편집합니다."
                 />
                 <button
-                  onClick={handleSubmitEdit}
+                  onClick={() => handleSubmitEdit(scene.id)}
                   disabled={isEditPending} // 로딩 중 클릭 방지
                   className="flex w-full bg-[#FB7185] text-[#F1F5F9] h-[50px] mt-3 rounded-lg justify-center items-center transition-all duration-300 hover:scale-[1.02] active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
                 >
