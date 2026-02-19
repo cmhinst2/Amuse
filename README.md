@@ -79,15 +79,29 @@ Amuse는 단순한 소설 쓰기/읽기를 넘어, 사용자가 직접 세계관
 - **지연 시간의 가치화 (Meaningful Loading):** AI가 장면을 생성하는 동안 단순한 스피너 대신 "OOO가 대답을 고민중입니다..."와 같은 맥락에 맞는 로딩 상태를 보여주어, 기다림을 '캐릭터와의 소통의 과정'으로 인지하게 만듭니다.
 
 <br />
-<img width="786" height="469" alt="image" src="https://github.com/user-attachments/assets/da932638-49f7-42af-a7dc-c4bf91faec3d" />
-
-
+<img width="834" height="390" alt="image" src="https://github.com/user-attachments/assets/92d395f4-32f0-4726-ace1-a8ae81dbb0ea" />
 <br />
 <br />
 
 ---
 
 # 🚀 Issue Resolved (시스템 안정성 및 사용자 경험(UX) 개선 리포트)
+## 1. 대규모 목록 조회 시 N+1 쿼리 문제 최적화
+사용자의 뮤즈 목록(MyMuseList) 조회 시 발생하는 데이터베이스 부하 문제를 아키텍처적으로 해결.
+
+**문제 (Issue):**
+ChatRoom 목록을 가져올 때, 각 방의 '마지막 메시지'를 표시하기 위해 방 개수(N)만큼 추가적인 SQL 쿼리가 실행되는 N+1 문제 발생.
+ChatRoom이 늘어날수록 서버 응답 속도가 기하급수적으로 느려지는 성능 병목 현상 확인.
+<br />
+<br />
+**해결 (Solution):**
+각 ChatRoom마다 쿼리를 날리는 대신, IN 절과 Window Function 성격의 쿼리를 사용하여 해당 유저의 모든 채팅방 마지막 메시지를 단 한 번의 쿼리로 일괄 조회.
+조회된 메시지 리스트를 Java의 Map<Long, ChatMessage> 구조로 변환하여 메모리 내에서 1:1 매칭 처리를 수행함으로써 데이터베이스 접근 횟수를 N+1회에서 2회(채팅방 조회 + 메시지 조회)로 고정.
+<br />
+<br />
+**결과 (Result):**
+채팅방 목록 로딩 속도 대폭 개선 및 데이터베이스 커넥션 자원 효율화.
+데이터 양에 관계없이 일정한 응답 시간을 보장하는 안정적인 API 구조 확보.
 
 ---
 
