@@ -374,6 +374,7 @@ export function StudioWriteContent() {
                     mainScrollRef={mainScrollRef}
                     handleSubmitEdit={handleSubmitEdit}
                     isEditPending={isEditPending}
+                    mode={'Novel'}
                   />
                   {scenes.length - 1 === index &&
                     <section className="self-end flex gap-3">
@@ -438,7 +439,7 @@ export function StudioWriteContent() {
 // 장면 렌더링 컴포넌트
 export const SceneArticle = (props) => {
   const { scene, mainCharacter, checkLastScene, checkNewScene, isEditMode,
-    editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending } = props;
+    editInput, setEditInput, mainScrollRef, handleSubmitEdit, isEditPending, mode } = props;
   const isNewLastScene = checkLastScene && checkNewScene;
   const typingText = useTypingEffect(checkNewScene ? scene.content : "", 25);
   const content = isNewLastScene ? typingText : scene.content;
@@ -450,39 +451,45 @@ export const SceneArticle = (props) => {
 
   // 사용자 입력값
   // 낙관적 데이터이거나, sequenceOrder가 0이 아닌 서버 데이터일 때
-  const hasUserInput = (isPendingAI || scene.sequenceOrder !== 0) && scene.metadata?.user_input;
+  let hasUserInput = (isPendingAI || scene.sequenceOrder !== 0);
+  if(mode == 'Remake') {
+    hasUserInput = hasUserInput && scene.metadata?.user_input;
+  } else {
+    hasUserInput = hasUserInput && scene.content;
+  }
 
-  useEffect(() => {
-    if (isTyping && mainScrollRef.current) {
-      const scrollContainer = mainScrollRef.current;
-      scrollContainer.scrollTo({
-        top: scrollContainer.scrollHeight,
-        behavior: 'smooth'
-      });
-    }
-  }, [typingText, isTyping, isPendingAI, mainScrollRef]);
-
+  // useEffect(() => {
+  //   if (isTyping && mainScrollRef.current) {
+  //     const scrollContainer = mainScrollRef.current;
+  //     scrollContainer.scrollTo({
+  //       top: scrollContainer.scrollHeight,
+  //       behavior: 'smooth'
+  //     });
+  //   }
+  // }, [typingText, isTyping, isPendingAI, mainScrollRef]);
 
   return (
     <div key={scene.id} className="mb-5">
+      {/* 낙관적 UI 부분 */}
       {hasUserInput && (
         <article className={`bg-[#1e293b] rounded-xl p-4 mb-6 border border-[#334155] transition-all
             ${isPendingAI ? 'opacity-70 border-[#FB7185]/40 ring-1 ring-[#FB7185]/20 shadow-[0_0_15px_rgba(251,113,133,0.1)]' : ''}`}>
           <p className="text-base leading-[1.8] text-[#94A3B8] whitespace-pre-wrap tracking-wide">
-            {scene.metadata.user_input}
+            {hasUserInput}
           </p>
         </article>
       )}
 
       <article className="animate-fadeIn min-h-[24px]">
         {isPendingAI || isRegenerating ? (
+          // AI에게 요청 보내고 대기중일때
           <div className="flex items-center gap-2 text-[#FB7185] text-sm animate-pulse">
             <Sparkles size={16} />
             {mainCharacter.name}의 대답을 기다리는 중 입니다...
           </div>
         ) : (
           <>
-            {/* 수정모드 이면서 마지막 장면 일 때  */}
+            {/* 대기가 끝났을 때 -> 수정모드 이면서 마지막 장면 일 때  */}
             {isEditMode && checkLastScene ?
               <div className="flex flex-col w-full group">
                 <textarea
@@ -513,7 +520,8 @@ export const SceneArticle = (props) => {
               </div>
               :
               <>
-                <QuoteContent content={content} />
+                {/* 대기가 끝났을 때 -> 수정모드 아닐 때 */}
+                <QuoteContent content={scene.content} />
                 {isTyping && (
                   <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
                 )}

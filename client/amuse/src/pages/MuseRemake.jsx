@@ -100,19 +100,31 @@ const MuseRemake = () => {
 
       // 낙관적 업데이트 수행
       queryClient.setQueryData(queryKey, (old) => {
-        const currentMessages = old?.messages || [];
+
+        const oldData = old || { messages: [], roomInfo: null };
+        const currentMessages = oldData.messages || [];
+
+        const maxOrder = currentMessages.length > 0
+          ? Math.max(...currentMessages.map(m => m.sequenceOrder || 0))
+          : 0;
+
+        console.log("사용자가 입력한 값: ", displayInput);
+
         return {
-          ...old,
+          ...oldData,
           messages: [
             ...currentMessages,
             {
               id: Date.now(), // 임시 ID
-              content: displayInput,
-              senderType: 'USER', // 사용자가 보낸 것이므로 USER
+              content: "",
+              senderType: 'USER',
               messageType: 'REMAKE',
-              isOptimistic: true, // 로딩 표시용
-              sequenceOrder: currentMessages.length + 1,
+              isOptimistic: true, // select에서 필터링 방지용
+              sequenceOrder: maxOrder + 1,
               createdAt: new Date().toISOString(),
+              metadata: {
+                user_input: displayInput
+              }
             }
           ]
         };
@@ -537,6 +549,7 @@ const MuseRemake = () => {
                         mainScrollRef={mainScrollRef}
                         handleSubmitEdit={handleSubmitEdit}
                         isEditPending={isEditPending}
+                        mode={'Remake'}
                       />
                       {messageList.length - 1 === index &&
                         <section className="self-end flex gap-3">

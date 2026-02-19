@@ -23,6 +23,8 @@ export function MuseList() {
     return <LoadingScreen text={`${nickname}님의 뮤즈들을 불러오는 중 입니다...`} />;
   }
 
+  console.log(myMuses);
+
   return (
     <div className="flex h-screen bg-[#0f172a] text-[#F1F5F9] overflow-hidden">
       <Sidebar />
@@ -94,7 +96,7 @@ export function MuseList() {
                             </h3>
                           </div>
                           <p className="text-[#F1F5F9]/70 text-sm line-clamp-1 mb-2 font-medium">
-                            {muse.lastSummary || "새로운 이야기가 시작되었습니다."}
+                            {muse.lastMessage || "새로운 이야기가 시작되었습니다."}
                           </p>
                         </>
                       }

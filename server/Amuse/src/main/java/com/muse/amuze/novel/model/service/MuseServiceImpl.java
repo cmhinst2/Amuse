@@ -88,29 +88,40 @@ public class MuseServiceImpl implements MuseService {
 		if (myMuses.isEmpty())
 			return Collections.emptyList();
 
-		return myMuses.stream()
-				.map(room -> MyMuseResponse.builder()
-						.novelId(room.getNovel().getId())
-						.roomId(room.getId())
-						.characterId(room.getCharacter().getId())
-						.name(room.getCharacter().getName())
-						.profileImageUrl(room.getCharacter().getProfileImageUrl())
-						.profileImagePosY(room.getCharacter().getProfileImagePosY())
-						.currentScore(room.getCurrentScore())
-						.relationshipStatus(room.getRelationshipStatus())
-						.lastMessage(room.getLastMessage())
-						.lastMessageAt(room.getLastMessageAt())
-						.currentLocation(room.getCurrentLocation())
-						.status(room.getStatus())
-						.isNovelDeleted(room.getNovel().isDelete())
-						.isMuseMode(room.getNovel().isMuseMode())
-						.userId(room.getUser().getId())
-						.novelTitle(room.getNovel().getTitle())
-						.roomMode(room.getRoomMode())
-						.coverImageUrl(room.getNovel().getCoverImageUrl())
-						.coverImagePosY(room.getNovel().getCoverImagePosY())
-						.build())
-				.toList();
+		// 방 ID 리스트 추출
+		List<Long> roomIds = myMuses.stream().map(ChatRoom::getId).toList();
+
+		// 해당 방들의 마지막 메시지들 한번에 조회
+		List<ChatMessage> lastMessages = chatMessageRepository.findLastMessagesByRoomIds(roomIds);
+
+		// Map 변환
+		Map<Long, ChatMessage> lastMessageMap = lastMessages.stream()
+				.collect(Collectors.toMap(msg -> msg.getChatRoom().getId(), msg -> msg));
+
+		return myMuses.stream().map(room -> {
+			ChatMessage lastMsg = lastMessageMap.get(room.getId());
+			return MyMuseResponse.builder()
+					.novelId(room.getNovel().getId())
+					.roomId(room.getId())
+					.characterId(room.getCharacter().getId())
+					.name(room.getCharacter().getName())
+					.profileImageUrl(room.getCharacter().getProfileImageUrl())
+					.profileImagePosY(room.getCharacter().getProfileImagePosY())
+					.currentScore(room.getCurrentScore())
+					.relationshipStatus(room.getRelationshipStatus())
+					.lastMessage(lastMsg != null ? lastMsg.getContent() : "대화를 시작해보세요!")
+					.lastMessageAt(lastMsg != null ? lastMsg.getCreatedAt() : null)
+					.currentLocation(room.getCurrentLocation())
+					.status(room.getStatus())
+					.isNovelDeleted(room.getNovel().isDelete())
+					.isMuseMode(room.getNovel().isMuseMode())
+					.userId(room.getUser().getId())
+					.novelTitle(room.getNovel().getTitle())
+					.roomMode(room.getRoomMode())
+					.coverImageUrl(room.getNovel().getCoverImageUrl())
+					.coverImagePosY(room.getNovel().getCoverImagePosY())
+					.build();
+		}).toList();
 	}
 
 	/**
@@ -515,8 +526,8 @@ public class MuseServiceImpl implements MuseService {
 		if (Boolean.TRUE.equals(metadata.get("is_edited"))) {
 			throw new IllegalStateException("이미 수정된 장면입니다.");
 		}
-		
-		metadata.put("is_edited", true); 
+
+		metadata.put("is_edited", true);
 		metadata.put("is_regenerated", true); // 수정 시 재생성된 것으로 간주
 		chatMessage.setMetadata(metadata);
 		chatMessage.setContent(request.getUserInput());
