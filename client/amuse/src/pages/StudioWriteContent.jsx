@@ -22,6 +22,7 @@ export function StudioWriteContent() {
   const mainScrollRef = useRef(null); // 실제 스크롤되는 <main> 태그용
   const bottomRef = useRef(null);     // 맨 아래 도착지점용
   const textareaRef = useRef(null); // textarea Ref
+  const isFirstScroll = useRef(true); // 처음 들어왔는지 체크(스크롤용)
 
   // <States>
   const [userInput, setUserInput] = useState(''); // 사용자 입력 상태값
@@ -188,18 +189,25 @@ export function StudioWriteContent() {
 
   // 자동 스크롤 하단 유지
   useEffect(() => {
-    if (!isScenesLoading && scenes.length > 0 && mainScrollRef.current) {
-      const timer = setTimeout(() => {
-        if (bottomRef.current) {
-          bottomRef.current.scrollIntoView({
-            behavior: scenes.length <= 1 ? 'auto' : 'smooth', // 첫 장면이면 즉시, 아니면 부드럽게
-            block: 'end',
-          });
+    console.log("useEffect 수행!");
+    if (isScenesLoading || !scenes || scenes.length === 0) return;
+
+    const scrollToBottom = () => {
+      if (bottomRef.current) {
+        console.log("스크롤 이동 모드:", isFirstScroll.current ? 'auto' : 'smooth');
+        bottomRef.current.scrollIntoView({
+          behavior: isFirstScroll.current ? 'auto' : 'smooth',
+          block: 'end',
+        });
+
+        if (isFirstScroll.current) {
+          isFirstScroll.current = false;
         }
-      }, 100);
-      return () => clearTimeout(timer);
-    }
-  }, [scenes, isNewScenePending, isScenesLoading]);
+      }
+    };
+    const timer = setTimeout(scrollToBottom, 100);
+    return () => clearTimeout(timer);
+  }, [scenes, isScenesLoading]);
 
   // <Handlers>
   // AI에게 사용자의 내용 전달 or 자동전개 요청
@@ -452,21 +460,11 @@ export const SceneArticle = (props) => {
   // 사용자 입력값
   // 낙관적 데이터이거나, sequenceOrder가 0이 아닌 서버 데이터일 때
   let hasUserInput = (isPendingAI || scene.sequenceOrder !== 0);
-  if(mode == 'Remake') {
+  if (mode == 'Remake') {
     hasUserInput = hasUserInput && scene.metadata?.user_input;
   } else {
-    hasUserInput = hasUserInput && scene.content;
+    hasUserInput = hasUserInput && scene.userInput;
   }
-
-  // useEffect(() => {
-  //   if (isTyping && mainScrollRef.current) {
-  //     const scrollContainer = mainScrollRef.current;
-  //     scrollContainer.scrollTo({
-  //       top: scrollContainer.scrollHeight,
-  //       behavior: 'smooth'
-  //     });
-  //   }
-  // }, [typingText, isTyping, isPendingAI, mainScrollRef]);
 
   return (
     <div key={scene.id} className="mb-5">
@@ -522,9 +520,6 @@ export const SceneArticle = (props) => {
               <>
                 {/* 대기가 끝났을 때 -> 수정모드 아닐 때 */}
                 <QuoteContent content={scene.content} />
-                {isTyping && (
-                  <span className="inline-block w-1 h-5 ml-1 bg-[#FB7185] animate-pulse align-middle" />
-                )}
               </>
             }
           </>

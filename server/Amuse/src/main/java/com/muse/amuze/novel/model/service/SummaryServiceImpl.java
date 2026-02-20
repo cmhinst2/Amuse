@@ -13,9 +13,11 @@ import org.springframework.ai.chat.messages.Message;
 import org.springframework.ai.chat.messages.SystemMessage;
 import org.springframework.ai.chat.messages.UserMessage;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.ai.chat.prompt.ChatOptions;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.ai.chat.prompt.PromptTemplate;
 import org.springframework.ai.openai.OpenAiChatModel;
+import org.springframework.ai.openai.OpenAiChatOptions;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.PropertySource;
 import org.springframework.core.io.Resource;
@@ -53,7 +55,8 @@ public class SummaryServiceImpl implements SummaryService {
   @Value("classpath:prompts/summary-system-prompt.txt")
   private Resource summaryPromptResource;
 
-  /** NOVEL
+  /**
+   * NOVEL
    * 전체 내용 줄거리 요약
    * 누적 totalSummar + 최근 5개 keyEvents 기반으로 요약
    */
@@ -100,7 +103,8 @@ public class SummaryServiceImpl implements SummaryService {
     log.info("=== 줄거리 업데이트 완료 (Novel ID: {}) ===", novelId);
   }
 
-  /** REMAKE
+  /**
+   * REMAKE
    * 전체 내용 줄거리 요약
    * 누적 lastSummary + 최근 5개 keyEvents 기반으로 요약
    * chat_message 테이블의 metadata 필드에 저장된 keyEvent들을 기반으로 함
@@ -117,7 +121,8 @@ public class SummaryServiceImpl implements SummaryService {
 
     log.debug("없는겨? recentMessages:: {}", recentMessages);
 
-    if (recentMessages.isEmpty()) return;
+    if (recentMessages.isEmpty())
+      return;
 
     // Metadata 에서 key_event 추출
     List<String> recentKeyEvents = new ArrayList<>();
@@ -129,18 +134,28 @@ public class SummaryServiceImpl implements SummaryService {
     }
 
     // 추출된 사건이 없으면 중단
-    if (recentKeyEvents.isEmpty()) return;
+    if (recentKeyEvents.isEmpty())
+      return;
 
     log.debug("recentKeyEvents {}::", recentKeyEvents);
 
-    // 리스트 반전 (최신순 -> 시간순: 1->2->3->4->5)
+    // 최근 5개 줄거리 확인
     Collections.reverse(recentKeyEvents);
-    String combinedEvents = String.join(" -> ", recentKeyEvents);
+    String combinedEvents = String.join("\n- ", recentKeyEvents);
+    if (!combinedEvents.isEmpty()) {
+      combinedEvents = "- " + combinedEvents;
+    }
 
-    // 기존 줄거리 확인
+    log.debug("combinedEvents:: {}", combinedEvents);
+
+    // 기존 마지막 줄거리 확인
     String existingSummary = (chatRoom.getLastSummary() != null && !chatRoom.getLastSummary().isBlank())
         ? chatRoom.getLastSummary()
-        : "새로운 서사가 시작됩니다.";
+        : "현재 기록된 줄거리가 없습니다.";
+
+    log.info("chatRoom.getLastSummary():: {}", chatRoom.getLastSummary());
+
+    log.info("existingSummary:: {}", existingSummary);
 
     // 프롬프트 구성
     String inputData = String.format(
@@ -152,6 +167,7 @@ public class SummaryServiceImpl implements SummaryService {
     log.info("비동기 요약 프로세스 시작 (Room ID: {})", roomId);
     String updatedSummary = requestSummary(inputData);
 
+    log.debug("updatedSummary:: {}", updatedSummary);
     // chat_room.last_summary 업데이트
     chatRoom.setLastSummary(updatedSummary);
 
@@ -161,24 +177,37 @@ public class SummaryServiceImpl implements SummaryService {
   /**
    * 사건 리스트를 바탕으로 전체 줄거리를 요약.
    * 
-   * @param combinedEvents "사건1 -> 사건2 -> 사건3" 형태의 문자열
+   * @param inputData
    * @return 요약된 줄거리 텍스트
    * @throws IOException
    */
-  public String requestSummary(String combinedEvents) throws IOException {
+  public String requestSummary(String inputData) throws IOException {
+    // 1. 시스템 프롬프트(지침) 로드
     String systemPrompt = StreamUtils.copyToString(summaryPromptResource.getInputStream(),
         StandardCharsets.UTF_8);
 
-    // PromptTemplate 생성 및 변수 치환
-    // 템플릿 안의 {{inputData}}를 파라미터로 받은 inputData 값으로 바꿉니다.
-    PromptTemplate template = new PromptTemplate(systemPrompt);
-    Message systemMessage = template.createMessage(Map.of("inputData", combinedEvents));
+    // 2. 사용자 메시지(데이터) 구성
+    // 중복 선언을 제거하고, AI에게 데이터의 범위를 명확히 인지시킵니다.
+    String userContent = String.format(
+        """
+            [지시사항]
+            반드시 아래 제공된 [데이터]의 내용만 사용하여 요약하십시오.
+            데이터에 없는 새로운 인물, 장소, 배경 설정을 추가하는 것은 엄격히 금지됩니다.
 
-    // UserMessage 생성 (기존 방식 유지 또는 간단하게 구성)
-    Message userMessage = new UserMessage("위 지침에 따라 줄거리를 갱신해줘.");
+            [데이터]
+            %s
 
-    // Prompt 생성 및 AI 호출 및 결과 반환
+            위 데이터의 '기존 줄거리'와 '새로운 사건'들을 논리적으로 하나로 합쳐서 최종 요약본을 작성해줘.
+            """,
+        inputData);
+
+    Message systemMessage = new SystemMessage(systemPrompt);
+    Message userMessage = new UserMessage(userContent);
+
+    
     Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
+
+    log.debug("AI 요약 요청 데이터: {}", inputData);
     ChatResponse response = chatModel.call(prompt);
 
     return response.getResult().getOutput().getContent();

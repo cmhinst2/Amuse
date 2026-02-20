@@ -423,6 +423,7 @@ public class MuseServiceImpl implements MuseService {
 
 				if (remakeScene.getSequenceOrder() % 5 == 0) { // chat_message 5개마다 chat_room 의 last_summary 갱신
 					// @Async 비동기 실행(응답 별개, 백그라운드에서 실행)
+					log.info("요약 실행!");
 					summaryService.remakeSummarizeInterval(chatRoom.getId());
 				}
 
