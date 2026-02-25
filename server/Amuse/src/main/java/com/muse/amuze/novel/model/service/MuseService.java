@@ -11,7 +11,7 @@ import com.muse.amuze.novel.model.dto.NovelResponse;
 public interface MuseService {
 
 	List<MyMuseResponse> getMyMuseList(int userId);
-
+	
 	MyMuseResponse checkChatRoomByUserId(int novelId, int userId);
 
 	MyMuseResponse createChatRoom(ChatRoomRequest request);

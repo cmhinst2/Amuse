@@ -71,8 +71,7 @@ public class SummaryServiceImpl implements SummaryService {
     List<StoryScene> recentScenes = storySceneRepository.findByNovelIdOrderBySequenceOrderDesc(
         novelId, PageRequest.of(0, 5));
 
-    if (recentScenes.isEmpty())
-      return;
+    if (recentScenes.isEmpty()) return;
 
     // 최근 Key Events 추출 및 시간순 정렬
     List<String> recentKeyEvents = recentScenes.stream()
@@ -119,8 +118,6 @@ public class SummaryServiceImpl implements SummaryService {
     // 해당 채팅방의 최신 메시지 5개 조회
     List<ChatMessage> recentMessages = chatMessageRepository.findTop5ByRoomIdOrderBySequenceOrderDesc(roomId);
 
-    log.debug("없는겨? recentMessages:: {}", recentMessages);
-
     if (recentMessages.isEmpty())
       return;
 
@@ -134,10 +131,7 @@ public class SummaryServiceImpl implements SummaryService {
     }
 
     // 추출된 사건이 없으면 중단
-    if (recentKeyEvents.isEmpty())
-      return;
-
-    log.debug("recentKeyEvents {}::", recentKeyEvents);
+    if (recentKeyEvents.isEmpty()) return;
 
     // 최근 5개 줄거리 확인
     Collections.reverse(recentKeyEvents);
@@ -146,16 +140,10 @@ public class SummaryServiceImpl implements SummaryService {
       combinedEvents = "- " + combinedEvents;
     }
 
-    log.debug("combinedEvents:: {}", combinedEvents);
-
     // 기존 마지막 줄거리 확인
     String existingSummary = (chatRoom.getLastSummary() != null && !chatRoom.getLastSummary().isBlank())
         ? chatRoom.getLastSummary()
         : "현재 기록된 줄거리가 없습니다.";
-
-    log.info("chatRoom.getLastSummary():: {}", chatRoom.getLastSummary());
-
-    log.info("existingSummary:: {}", existingSummary);
 
     // 프롬프트 구성
     String inputData = String.format(
@@ -164,10 +152,8 @@ public class SummaryServiceImpl implements SummaryService {
         combinedEvents);
 
     // AI 요약 요청
-    log.info("비동기 요약 프로세스 시작 (Room ID: {})", roomId);
     String updatedSummary = requestSummary(inputData);
 
-    log.debug("updatedSummary:: {}", updatedSummary);
     // chat_room.last_summary 업데이트
     chatRoom.setLastSummary(updatedSummary);
 
@@ -204,10 +190,7 @@ public class SummaryServiceImpl implements SummaryService {
     Message systemMessage = new SystemMessage(systemPrompt);
     Message userMessage = new UserMessage(userContent);
 
-    
     Prompt prompt = new Prompt(List.of(systemMessage, userMessage));
-
-    log.debug("AI 요약 요청 데이터: {}", inputData);
     ChatResponse response = chatModel.call(prompt);
 
     return response.getResult().getOutput().getContent();

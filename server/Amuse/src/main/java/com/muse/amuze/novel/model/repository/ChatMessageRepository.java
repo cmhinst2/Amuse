@@ -23,13 +23,13 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
   Optional<ChatMessage> findByChatRoomIdAndId(Long roomId, Long id);
 
   @Query(value = """
-    SELECT * FROM chat_message cm 
-    WHERE (cm.room_id, cm.sequence_order) IN (
-        SELECT room_id, MAX(sequence_order) 
-        FROM chat_message 
-        WHERE room_id IN :roomIds 
-        GROUP BY room_id
-    )
-    """, nativeQuery = true)
+  SELECT * FROM chat_message cm
+  WHERE (cm.room_id, cm.sequence_order) IN (
+  SELECT room_id, MAX(sequence_order)
+  FROM chat_message
+  WHERE room_id IN :roomIds
+  GROUP BY room_id
+  )
+  """, nativeQuery = true)
   List<ChatMessage> findLastMessagesByRoomIds(@Param("roomIds") List<Long> roomIds);
 }

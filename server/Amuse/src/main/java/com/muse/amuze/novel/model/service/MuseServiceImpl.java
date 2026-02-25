@@ -5,6 +5,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,7 +42,6 @@ import com.muse.amuze.novel.model.entity.ChatMessage;
 import com.muse.amuze.novel.model.entity.ChatRoom;
 import com.muse.amuze.novel.model.entity.MessageType;
 import com.muse.amuze.novel.model.entity.Novel;
-import com.muse.amuze.novel.model.entity.StoryScene;
 import com.muse.amuze.novel.model.repository.CharacterRepository;
 import com.muse.amuze.novel.model.repository.ChatMessageRepository;
 import com.muse.amuze.novel.model.repository.ChatRoomRepository;
@@ -84,14 +84,15 @@ public class MuseServiceImpl implements MuseService {
 	@Transactional(readOnly = true)
 	@Override
 	public List<MyMuseResponse> getMyMuseList(int userId) {
+		// 1. 사용자의 Muse 목록 가져옴 (1회)
 		List<ChatRoom> myMuses = chatRoomRepository.findMyMuseListByUserId(userId);
 		if (myMuses.isEmpty())
 			return Collections.emptyList();
 
-		// 방 ID 리스트 추출
+		// 2. 1번 결과값에서 각 방의 ID 리스트를 추출
 		List<Long> roomIds = myMuses.stream().map(ChatRoom::getId).toList();
 
-		// 해당 방들의 마지막 메시지들 한번에 조회
+		// 3. roomIds를 통해 해당 방들의 마지막 메시지들 한번에 조회 (1회)
 		List<ChatMessage> lastMessages = chatMessageRepository.findLastMessagesByRoomIds(roomIds);
 
 		// Map 변환
@@ -121,7 +122,9 @@ public class MuseServiceImpl implements MuseService {
 					.coverImageUrl(room.getNovel().getCoverImageUrl())
 					.coverImagePosY(room.getNovel().getCoverImagePosY())
 					.build();
-		}).toList();
+		}).sorted(Comparator.comparing(MyMuseResponse::getLastMessageAt,
+				Comparator.nullsLast(Comparator.reverseOrder())))
+				.toList();
 	}
 
 	/**
