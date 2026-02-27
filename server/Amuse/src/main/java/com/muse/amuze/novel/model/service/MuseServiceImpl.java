@@ -17,6 +17,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StopWatch;
 import org.springframework.util.StreamUtils;
 import org.springframework.ai.chat.messages.AssistantMessage;
 import org.springframework.ai.chat.messages.Message;
@@ -42,6 +43,7 @@ import com.muse.amuze.novel.model.entity.ChatMessage;
 import com.muse.amuze.novel.model.entity.ChatRoom;
 import com.muse.amuze.novel.model.entity.MessageType;
 import com.muse.amuze.novel.model.entity.Novel;
+import com.muse.amuze.novel.model.entity.StoryScene;
 import com.muse.amuze.novel.model.repository.CharacterRepository;
 import com.muse.amuze.novel.model.repository.ChatMessageRepository;
 import com.muse.amuze.novel.model.repository.ChatRoomRepository;
@@ -77,6 +79,23 @@ public class MuseServiceImpl implements MuseService {
 			List<ChatMessage> previousMessages, String userNote) {
 	}
 
+	public void measurePerformance(int userId) {
+    StopWatch stopWatch = new StopWatch("N+1 성능 비교");
+
+    // 1. 루프 방식 측정
+    stopWatch.start("Loop 방식 (N+1)");
+    getMyMuseList_loop(userId);
+    stopWatch.stop();
+
+    // 2. Batch 방식 측정
+    stopWatch.start("Batch 방식");
+    getMyMuseList(userId);
+    stopWatch.stop();
+
+    // 결과 출력
+    System.out.println(stopWatch.prettyPrint());
+}
+
 	/**
 	 * 나의 Muse 목록 조회
 	 *
@@ -86,8 +105,7 @@ public class MuseServiceImpl implements MuseService {
 	public List<MyMuseResponse> getMyMuseList(int userId) {
 		// 1. 사용자의 Muse 목록 가져옴 (1회)
 		List<ChatRoom> myMuses = chatRoomRepository.findMyMuseListByUserId(userId);
-		if (myMuses.isEmpty())
-			return Collections.emptyList();
+		if (myMuses.isEmpty()) return Collections.emptyList();
 
 		// 2. 1번 결과값에서 각 방의 ID 리스트를 추출
 		List<Long> roomIds = myMuses.stream().map(ChatRoom::getId).toList();
@@ -101,6 +119,41 @@ public class MuseServiceImpl implements MuseService {
 
 		return myMuses.stream().map(room -> {
 			ChatMessage lastMsg = lastMessageMap.get(room.getId());
+			return MyMuseResponse.builder()
+					.novelId(room.getNovel().getId())
+					.roomId(room.getId())
+					.characterId(room.getCharacter().getId())
+					.name(room.getCharacter().getName())
+					.profileImageUrl(room.getCharacter().getProfileImageUrl())
+					.profileImagePosY(room.getCharacter().getProfileImagePosY())
+					.currentScore(room.getCurrentScore())
+					.relationshipStatus(room.getRelationshipStatus())
+					.lastMessage(lastMsg != null ? lastMsg.getContent() : "대화를 시작해보세요!")
+					.lastMessageAt(lastMsg != null ? lastMsg.getCreatedAt() : null)
+					.currentLocation(room.getCurrentLocation())
+					.status(room.getStatus())
+					.isNovelDeleted(room.getNovel().isDelete())
+					.isMuseMode(room.getNovel().isMuseMode())
+					.userId(room.getUser().getId())
+					.novelTitle(room.getNovel().getTitle())
+					.roomMode(room.getRoomMode())
+					.coverImageUrl(room.getNovel().getCoverImageUrl())
+					.coverImagePosY(room.getNovel().getCoverImagePosY())
+					.build();
+		}).sorted(Comparator.comparing(MyMuseResponse::getLastMessageAt,
+				Comparator.nullsLast(Comparator.reverseOrder())))
+				.toList();
+	}
+
+	@Transactional(readOnly = true)
+	@Override
+	public List<MyMuseResponse> getMyMuseList_loop(int userId) {
+		List<ChatRoom> myMuses = chatRoomRepository.findMyMuseListByUserId(userId);
+		if (myMuses.isEmpty()) return Collections.emptyList();
+
+		return myMuses.stream().map(room -> {
+			ChatMessage lastMsg = chatMessageRepository.findTopByChatRoomIdOrderByCreatedAtDesc(room.getId());
+
 			return MyMuseResponse.builder()
 					.novelId(room.getNovel().getId())
 					.roomId(room.getId())

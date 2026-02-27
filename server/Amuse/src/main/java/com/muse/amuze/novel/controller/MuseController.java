@@ -42,10 +42,11 @@ public class MuseController {
 	 */
 	@GetMapping("list/{userId:[0-9]+}")
 	public ResponseEntity<List<MyMuseResponse>> getMyMuseList(@PathVariable("userId") int userId) {
+		//museService.measurePerformance(userId);
 		List<MyMuseResponse> myMuses = museService.getMyMuseList(userId);
 		return ResponseEntity.ok(myMuses);
 	}
-
+	
 	/**
 	 * 사용자와 캐릭터의 기존 채팅방 여부 조회
 	 * 

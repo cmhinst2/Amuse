@@ -31,4 +31,8 @@ public interface MuseService {
   ChatMessageResponse regenerateMessage(Long roomId, Long id) throws Exception;
 
 	ChatMessageResponse editLastMessage(ChatMessageRequest request);
+
+	List<MyMuseResponse> getMyMuseList_loop(int userId);
+
+	void measurePerformance(int userId);
 }

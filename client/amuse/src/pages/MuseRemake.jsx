@@ -100,15 +100,11 @@ const MuseRemake = () => {
 
       // 낙관적 업데이트 수행
       queryClient.setQueryData(queryKey, (old) => {
-
         const oldData = old || { messages: [], roomInfo: null };
         const currentMessages = oldData.messages || [];
-
         const maxOrder = currentMessages.length > 0
           ? Math.max(...currentMessages.map(m => m.sequenceOrder || 0))
           : 0;
-
-        console.log("사용자가 입력한 값: ", displayInput);
 
         return {
           ...oldData,

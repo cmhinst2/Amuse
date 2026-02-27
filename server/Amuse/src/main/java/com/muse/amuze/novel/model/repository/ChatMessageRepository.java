@@ -32,4 +32,6 @@ public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> 
   )
   """, nativeQuery = true)
   List<ChatMessage> findLastMessagesByRoomIds(@Param("roomIds") List<Long> roomIds);
+
+  ChatMessage findTopByChatRoomIdOrderByCreatedAtDesc(@Param("id") Long id);
 }
